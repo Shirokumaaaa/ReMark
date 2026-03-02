@@ -1,4 +1,4 @@
-# Arc2Face Portable (Expression + Reference Adapter)
+# BG-Diff Portable (Expression + Reference Adapter)
 
 This folder is a minimal, portable wrapper around the Arc2Face expression pipeline.  
 You can copy this folder into another project and use the provided config to run generation without CLI args.
