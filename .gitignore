@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.DS_Store
+.hf_cache/
+outputs/
+*.png
+*.jpg
+*.jpeg
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.pt
+*.safetensors
+models/
+data_manifests/
+generation_results.jsonl

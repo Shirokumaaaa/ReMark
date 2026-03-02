@@ -1,0 +1,18 @@
+{
+  "models_dir": "/mnt/personal_workspace/chenkeyu/Arc2Face/models",
+  "manifest": "/mnt/personal_workspace/chenkeyu/Arc2Face/data_manifests/celeba_train_triplets.csv",
+  "output_dir": "/mnt/personal_workspace/chenkeyu/Arc2Face/outputs/portable_samples",
+  "limit": 12,
+  "start_index": 0,
+  "strict_cuda_provider": true,
+  "config": {
+    "use_ref_adapter": true,
+    "lora_ref_scale": 1.0,
+    "num_steps": 10,
+    "guidance_scale": 3.0,
+    "num_images": 1,
+    "exp_adapter_scale": 1.0,
+    "output_size": 256,
+    "seed": null
+  }
+}
