@@ -1,0 +1,7 @@
+{
+  "do_pretrain": false,
+  "do_tune_deepfake": false,
+  "do_test_common": false,
+  "do_test_simswap": false,
+  "do_test_stylemask": true
+}
