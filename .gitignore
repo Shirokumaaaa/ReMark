@@ -35,3 +35,20 @@ weights/
 results/
 outputs/
 temp_results/
+
+# Forensic-SleeperMark data/artifacts
+Forensic-SleeperMark/Stage1/__pycache__/
+Forensic-SleeperMark/Stage1/dataset/
+Forensic-SleeperMark/Stage1/output_dir/
+Forensic-SleeperMark/Stage2/__pycache__/
+Forensic-SleeperMark/Stage2/Output/
+Forensic-SleeperMark/Stage2/pretrainedWM/
+
+# Forensic-LampMark data/artifacts
+Forensic-LampMark/__pycache__/
+Forensic-LampMark/image_data/
+Forensic-LampMark/watermark_data/
+Forensic-LampMark/weights/
+Forensic-LampMark/results/
+Forensic-LampMark/checkpoints/
+Forensic-LampMark/datasets/
