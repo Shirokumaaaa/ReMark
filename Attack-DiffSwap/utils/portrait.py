@@ -35,11 +35,20 @@ class Portrait(Dataset):
         self.tgt_list = os.listdir(f'{root}/target') 
         self.tgt_list = [x for x in self.tgt_list if x not in self.error_img['target']]
         self.tgt_list.sort()
-        
+
+        self.min_lmk_span = 96
+        self.min_mean_intensity = 30.0
+        self.skip_report = {'source': {}, 'target': {}}
+
+        self.src_list = self._filter_split_by_quality('source', self.src_list)
+        self.tgt_list = self._filter_split_by_quality('target', self.tgt_list)
+        self._save_quality_skip_report()
+
         print(f'len(self.src_list): {len(self.src_list)}')
+        print(f'len(self.tgt_list): {len(self.tgt_list)}')
         self.affine_thetas = json.load(open(f'{root}/affine_theta.json'))
         
-        self.interpolation = {"linear": PIL.Image.LINEAR,
+        self.interpolation = {"linear": getattr(PIL.Image, 'LINEAR', PIL.Image.BILINEAR),
                         "bilinear": PIL.Image.BILINEAR,
                         "bicubic": PIL.Image.BICUBIC,
                         "lanczos": PIL.Image.LANCZOS,
@@ -58,6 +67,42 @@ class Portrait(Dataset):
         self.dilate = dilate
         if dilate:
             self.dilate_kernel = np.ones((11, 11), np.uint8)
+
+    def _filter_split_by_quality(self, split, names):
+        valid = []
+        for name in names:
+            reason = self._check_quality(split, name)
+            if reason is None:
+                valid.append(name)
+            else:
+                self.skip_report[split][name] = reason
+        return valid
+
+    def _check_quality(self, split, name):
+        if name not in self.landmarks[split]:
+            return 'missing_landmark_256'
+
+        lm = np.array(self.landmarks[split][name], dtype=np.float32)
+        min_xy = lm.min(axis=0)
+        max_xy = lm.max(axis=0)
+        span = max_xy - min_xy
+        if span[0] < self.min_lmk_span or span[1] < self.min_lmk_span:
+            return f'landmark_span_too_small({span[0]:.1f},{span[1]:.1f})'
+
+        align_path = os.path.join(self.root, 'align', split, name)
+        if not os.path.exists(align_path):
+            return 'missing_align_image'
+
+        image = Image.open(align_path).convert('L')
+        mean_intensity = float(np.array(image, dtype=np.float32).mean())
+        if mean_intensity < self.min_mean_intensity:
+            return f'align_image_too_dark({mean_intensity:.2f})'
+        return None
+
+    def _save_quality_skip_report(self):
+        report_path = os.path.join(self.root, 'quality_skip.json')
+        with open(report_path, 'w') as f:
+            json.dump(self.skip_report, f, indent=4)
 
     def __len__(self):
         return len(self.src_list) * len(self.tgt_list) # 9 * 1039 = 9351

@@ -156,10 +156,16 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('checkpoint', help='checkpoint to load')
     parser.add_argument('--save_img', type=bool, default=False)
-    parser.add_argument('--tgt_scale', type=float, default=0.01)
+    parser.add_argument(
+        '--target_preserve_scale', '--tgt_scale',
+        dest='target_preserve_scale',
+        type=float,
+        default=0.01,
+        help='Larger value keeps more target/original structure; smaller value tends to allow stronger source-identity transfer.'
+    )
     parser.add_argument('--world_size', default=1, type=int,
                         help='number of distributed processes')
-    parser.add_argument('--local_rank', default=-1, type=int)
+    parser.add_argument('--local_rank', '--local-rank', dest='local_rank', default=-1, type=int)
     parser.add_argument('--dist_on_itp', action='store_true')
     parser.add_argument('--dist_url', default='env://',
                         help='url used to set up distributed training')
@@ -198,7 +204,8 @@ if __name__ == '__main__':
         drop_last=False,
     )
     
-    ddim_sampler = DDIMSampler(model.module, tgt_scale=args.tgt_scale)
+    print(f'target_preserve_scale: {args.target_preserve_scale}')
+    ddim_sampler = DDIMSampler(model.module, target_preserve_scale=args.target_preserve_scale)
     
     print('start batch')
     for batch_idx, batch in enumerate(tqdm(dataloader)):        
@@ -207,7 +214,5 @@ if __name__ == '__main__':
                 batch[k] = v.to(device)
                 
         perform_swap(model.module, batch, ckpt, ddim_sampler)
-
-
 
 
