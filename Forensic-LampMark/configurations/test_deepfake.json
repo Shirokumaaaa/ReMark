@@ -14,7 +14,7 @@
   "do_star_gan": false,
   "do_style_mask": true,
   "do_hyper_reenact": false,
-  "img_path": "/mnt/personal_workspace/chenkeyu/ReMark/Forensic-LampMark/image_data/dataset_celeba_hq",
+  "img_path": "/mnt/personal_workspace/chenkeyu/ReMark/Dataset-CelebA_HQ",
   "wm_path": "/mnt/personal_workspace/chenkeyu/ReMark/Forensic-LampMark/watermark_data/celeba_hq",
   "manifest_path": "/mnt/personal_workspace/chenkeyu/ReMark/Forensic-LampMark/data_manifests/celeba_hq_128_{split}.csv",
   "weight_path": "/mnt/personal_workspace/chenkeyu/ReMark/Forensic-LampMark/weights/128_64",
