@@ -1,0 +1,39 @@
+# 快速冒烟测试：少量数据 + 小 batch + 无攻击 + 无 AMP
+# 用于验证端到端管线是否能跑通
+# 用法：
+#   python train_stage1.py --config configs/stage1_vae.yaml \
+#                          --override configs/experiments/quick_test.yaml
+
+model:
+  base_channels: 32        # 减小模型尺寸加快测试
+
+training:
+  epochs: 3
+  batch_size: 4
+  lr: 1.0e-4
+  kl_warmup_epochs: 1
+  save_freq: 1
+  val_freq: 1
+
+losses:
+  l1:    { weight: 1.0 }
+  lpips: { weight: 0.0, enabled: false }   # 禁用，跳过 lpips 加载
+  bce:   { weight: 1.0 }
+  kl:    { weight: 0.01, warmup: true }
+
+efficiency:
+  cache_wm_images: false   # 不用 LampMark 的缓存，在线用 FIN 生成
+  use_amp: false
+  wm_loss_freq: 1
+  attack_num_workers: 0
+
+attacks:
+  online:  [stargan]       # 启用 StarGAN 攻击测试完整管线
+  offline: []
+
+data:
+  train_csv: data_manifests/celeba_hq_128_tiny.csv
+  val_csv:   data_manifests/celeba_hq_128_tiny_val.csv
+
+paths:
+  runs_dir: runs

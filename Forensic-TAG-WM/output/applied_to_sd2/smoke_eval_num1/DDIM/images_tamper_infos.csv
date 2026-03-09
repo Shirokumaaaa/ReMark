@@ -1,0 +1,2 @@
+Image Name,Image Path,Tamper Loc Acc(image),Spatial Tamper Loc Acc(image),Absolute Tamper Detection Error(image),Calculated True Spatial Tamper Ratio(image),Tamper Loc Acc(latent),Spatial Tamper Loc Acc(latent),Absolute Tamper Detection Error(latent),Calculated True Spatial Tamper Ratio(latent)
+sample_000000000.png,/mnt/personal_workspace/chenkeyu/ReMark/Forensic-TAG-WM/output/applied_to_sd2/smoke_eval_num1/DDIM/images/sample_000000000.png,0.9923477172851562,0.9923477172851562,0.00281524658203125,0.9107017517089844,0.985595703125,0.985595703125,0.004638671875,0.912109375

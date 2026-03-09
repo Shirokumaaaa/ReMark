@@ -1,0 +1,15 @@
+# 正规训练，10k 子集（train=10000, val=2156），4 卡（GPU 1,2,4,5）
+# 用法：
+#   CUDA_VISIBLE_DEVICES=1,2,4,5 torchrun --nproc_per_node=4 train_stage1.py \
+#       --config configs/stage1_vae.yaml \
+#       --override configs/experiments/train_10k.yaml
+
+data:
+  train_csv: data_manifests/celeba_hq_128_train_10k.csv
+  val_csv:   data_manifests/celeba_hq_128_val.csv
+
+training:
+  batch_size: 64   # per GPU；24GB 卡上约占 18-20GB（VAE+StarGAN+LPIPS+FIN）
+
+efficiency:
+  cache_wm_images: false   # LampMark npy 存的是 64-bit message 向量，不能当图像用

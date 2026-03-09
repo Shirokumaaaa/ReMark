@@ -1,0 +1,47 @@
+_meta:
+  config_path: configs/stage1_vae.yaml
+  created_at: '2026-03-08T22:04:38'
+  override_path: configs/experiments/train_10k.yaml
+  run_dir: /mnt/personal_workspace/chenkeyu/ReMark/Forensic-Remark_Module/runs/stage1_20260308_2204
+attacks:
+  offline: []
+  online:
+  - stargan
+data:
+  image_size: 128
+  train_csv: /mnt/personal_workspace/chenkeyu/ReMark/Forensic-Remark_Module/data_manifests/celeba_hq_128_train_10k.csv
+  val_csv: /mnt/personal_workspace/chenkeyu/ReMark/Forensic-Remark_Module/data_manifests/celeba_hq_128_val.csv
+efficiency:
+  attack_num_workers: 2
+  cache_wm_images: true
+  use_amp: true
+  wm_loss_freq: 4
+losses:
+  bce:
+    weight: 10.0
+  kl:
+    warmup: true
+    weight: 1.0
+  l1:
+    weight: 1.0
+  lpips:
+    weight: 0.1
+model:
+  downsample_factor: 16
+  latent_channels: 4
+paths:
+  runs_dir: /mnt/personal_workspace/chenkeyu/ReMark/Forensic-Remark_Module/runs
+slerp:
+  n_steps: 10
+training:
+  batch_size: 64
+  betas:
+  - 0.9
+  - 0.999
+  epochs: 200
+  kl_warmup_epochs: 20
+  lr: 1.0e-05
+  save_freq: 10
+  val_freq: 1
+  weight_decay: 1.0e-05
+wm_model: fin

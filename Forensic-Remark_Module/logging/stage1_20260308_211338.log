@@ -1,0 +1,21 @@
+[21:13:38] Device: cuda
+[21:13:38] Config: configs/stage1_vae.yaml  Override: configs/experiments/quick_test.yaml
+[21:13:38] Train: 50 samples, Val: 20 samples
+[21:13:40] VAE parameters: 13.3M
+[21:13:54] [Train] Epoch 000  loss=1.3587  l1=0.5263  kl=0.4260  bce=0.8324
+[21:13:56] [Val]   Epoch 000  loss=1.1164  acc=0.5109
+[21:13:57] Checkpoint saved: /mnt/personal_workspace/chenkeyu/ReMark/Forensic-Remark_Module/checkpoints/quick_test/best.pth
+[21:13:58] Sample saved: /mnt/personal_workspace/chenkeyu/ReMark/Forensic-Remark_Module/samples/quick_test/epoch_000.png
+[21:13:59] Checkpoint saved: /mnt/personal_workspace/chenkeyu/ReMark/Forensic-Remark_Module/checkpoints/quick_test/last.pth
+[21:14:01] Checkpoint saved: /mnt/personal_workspace/chenkeyu/ReMark/Forensic-Remark_Module/checkpoints/quick_test/epoch_000.pth
+[21:14:02] [Train] Epoch 001  loss=1.1897  l1=0.4551  kl=0.8608  bce=0.7260
+[21:14:03] [Val]   Epoch 001  loss=1.0882  acc=0.4766
+[21:14:03] Sample saved: /mnt/personal_workspace/chenkeyu/ReMark/Forensic-Remark_Module/samples/quick_test/epoch_001.png
+[21:14:05] Checkpoint saved: /mnt/personal_workspace/chenkeyu/ReMark/Forensic-Remark_Module/checkpoints/quick_test/last.pth
+[21:14:07] Checkpoint saved: /mnt/personal_workspace/chenkeyu/ReMark/Forensic-Remark_Module/checkpoints/quick_test/epoch_001.pth
+[21:14:08] [Train] Epoch 002  loss=1.1475  l1=0.4022  kl=0.6267  bce=0.7390
+[21:14:08] [Val]   Epoch 002  loss=1.0895  acc=0.4813
+[21:14:09] Sample saved: /mnt/personal_workspace/chenkeyu/ReMark/Forensic-Remark_Module/samples/quick_test/epoch_002.png
+[21:14:10] Checkpoint saved: /mnt/personal_workspace/chenkeyu/ReMark/Forensic-Remark_Module/checkpoints/quick_test/last.pth
+[21:14:12] Checkpoint saved: /mnt/personal_workspace/chenkeyu/ReMark/Forensic-Remark_Module/checkpoints/quick_test/epoch_002.pth
+[21:14:12] Training complete.

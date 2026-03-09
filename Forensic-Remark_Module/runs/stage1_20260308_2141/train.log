@@ -1,0 +1,13 @@
+[21:41:17] Run dir   : /mnt/personal_workspace/chenkeyu/ReMark/Forensic-Remark_Module/runs/stage1_20260308_2141
+[21:41:17] Device    : cuda:0  |  world_size: 1
+[21:41:17] Train: 50 samples  Val: 20 samples  (12 steps/epoch/GPU)
+[21:41:20] Online attack loaded: stargan
+[21:41:20] lr=1.00e-04  (base 1.00e-04 × 1 GPUs)
+[21:41:20] VAE: 13.3M params
+[21:41:28] Epoch 000 | train: loss=1.3588  l1=0.5158  kl=1.3373  bce=0.8430 | val: loss=1.1416  acc=0.4977  l1=0.4155  kl=0.4277  bce=0.7261
+[21:41:28] Sample → samples/epoch_000.png
+[21:41:37] Epoch 001 | train: loss=1.2246  l1=0.4860  kl=0.5204  bce=0.7334 | val: loss=1.1321  acc=0.4938  l1=0.4049  kl=0.4958  bce=0.7222
+[21:41:38] Sample → samples/epoch_001.png
+[21:41:46] Epoch 002 | train: loss=1.1930  l1=0.4737  kl=0.4151  bce=0.7152 | val: loss=1.1089  acc=0.4992  l1=0.3949  kl=0.2314  bce=0.7116
+[21:41:46] Sample → samples/epoch_002.png
+[21:41:52] Training complete.

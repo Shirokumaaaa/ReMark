@@ -1,0 +1,60 @@
+[23:03:52] Run dir   : /mnt/personal_workspace/chenkeyu/ReMark/Forensic-Remark_Module/runs/stage1_20260308_2303
+[23:03:52] Device    : cuda:0  |  world_size: 4
+[23:03:52] Train: 10000 samples  Val: 2156 samples  (39 steps/epoch/GPU)
+[23:03:56] Online attack loaded: stargan
+[23:03:56] lr=1.20e-03  (base 3.00e-04 × 4 GPUs)
+[23:03:56] VAE: 53.0M params
+[23:04:45] Epoch 000 | train: loss=nan  l1=nan  kl=0.4600  lpips=nan  bce=nan | val: loss=4.2034  acc=0.5004  l1=0.6576  kl=0.3792  bce=0.7092
+[23:04:47] Sample → samples/epoch_000.png
+[23:05:58] Epoch 001 | train: loss=nan  l1=nan  kl=0.3795  lpips=nan  bce=nan | val: loss=4.2063  acc=0.5000  l1=0.6575  kl=0.3792  bce=0.7097
+[23:05:59] Sample → samples/epoch_001.png
+[23:06:50] Epoch 002 | train: loss=nan  l1=nan  kl=0.3793  lpips=nan  bce=nan | val: loss=4.2060  acc=0.5021  l1=0.6576  kl=0.3793  bce=0.7097
+[23:06:51] Sample → samples/epoch_002.png
+[23:07:49] Epoch 003 | train: loss=nan  l1=nan  kl=0.3794  lpips=nan  bce=nan | val: loss=4.2061  acc=0.5016  l1=0.6576  kl=0.3794  bce=0.7097
+[23:07:50] Sample → samples/epoch_003.png
+[23:08:41] Epoch 004 | train: loss=nan  l1=nan  kl=0.3795  lpips=nan  bce=nan | val: loss=4.2070  acc=0.4985  l1=0.6576  kl=0.3793  bce=0.7099
+[23:08:42] Sample → samples/epoch_004.png
+[23:09:34] Epoch 005 | train: loss=nan  l1=nan  kl=0.3794  lpips=nan  bce=nan | val: loss=4.2065  acc=0.5003  l1=0.6576  kl=0.3792  bce=0.7098
+[23:09:35] Sample → samples/epoch_005.png
+[23:10:29] Epoch 006 | train: loss=nan  l1=nan  kl=0.3794  lpips=nan  bce=nan | val: loss=4.2060  acc=0.5021  l1=0.6576  kl=0.3793  bce=0.7097
+[23:10:30] Sample → samples/epoch_006.png
+[23:11:22] Epoch 007 | train: loss=nan  l1=nan  kl=0.3794  lpips=nan  bce=nan | val: loss=4.2051  acc=0.4990  l1=0.6576  kl=0.3792  bce=0.7095
+[23:11:23] Sample → samples/epoch_007.png
+[23:12:14] Epoch 008 | train: loss=nan  l1=nan  kl=0.3794  lpips=nan  bce=nan | val: loss=4.2016  acc=0.5028  l1=0.6576  kl=0.3793  bce=0.7088
+[23:12:15] Sample → samples/epoch_008.png
+[23:13:12] Epoch 009 | train: loss=nan  l1=nan  kl=0.3794  lpips=nan  bce=nan | val: loss=4.2050  acc=0.4998  l1=0.6576  kl=0.3792  bce=0.7095
+[23:13:13] Sample → samples/epoch_009.png
+[23:14:04] Epoch 010 | train: loss=nan  l1=nan  kl=0.3794  lpips=nan  bce=nan | val: loss=4.2085  acc=0.4992  l1=0.6576  kl=0.3792  bce=0.7102
+[23:14:05] Sample → samples/epoch_010.png
+[23:15:03] Epoch 011 | train: loss=nan  l1=nan  kl=0.3795  lpips=nan  bce=nan | val: loss=4.2056  acc=0.4999  l1=0.6576  kl=0.3792  bce=0.7096
+[23:15:04] Sample → samples/epoch_011.png
+[23:15:57] Epoch 012 | train: loss=nan  l1=nan  kl=0.3795  lpips=nan  bce=nan | val: loss=4.2021  acc=0.5004  l1=0.6576  kl=0.3792  bce=0.7089
+[23:15:58] Sample → samples/epoch_012.png
+[23:16:51] Epoch 013 | train: loss=nan  l1=nan  kl=0.3794  lpips=nan  bce=nan | val: loss=4.2114  acc=0.4979  l1=0.6576  kl=0.3793  bce=0.7107
+[23:16:52] Sample → samples/epoch_013.png
+[23:17:43] Epoch 014 | train: loss=nan  l1=nan  kl=0.3794  lpips=nan  bce=nan | val: loss=4.2086  acc=0.5017  l1=0.6576  kl=0.3792  bce=0.7102
+[23:17:44] Sample → samples/epoch_014.png
+[23:18:37] Epoch 015 | train: loss=nan  l1=nan  kl=0.3795  lpips=nan  bce=nan | val: loss=4.2085  acc=0.5013  l1=0.6576  kl=0.3794  bce=0.7102
+[23:18:39] Sample → samples/epoch_015.png
+[23:19:30] Epoch 016 | train: loss=nan  l1=nan  kl=0.3793  lpips=nan  bce=nan | val: loss=4.2064  acc=0.5009  l1=0.6576  kl=0.3793  bce=0.7097
+[23:19:31] Sample → samples/epoch_016.png
+[23:20:23] Epoch 017 | train: loss=nan  l1=nan  kl=0.3794  lpips=nan  bce=nan | val: loss=4.2025  acc=0.5000  l1=0.6576  kl=0.3792  bce=0.7090
+[23:20:24] Sample → samples/epoch_017.png
+[23:21:17] Epoch 018 | train: loss=nan  l1=nan  kl=0.3795  lpips=nan  bce=nan | val: loss=4.1998  acc=0.5040  l1=0.6576  kl=0.3793  bce=0.7084
+[23:21:18] Sample → samples/epoch_018.png
+[23:22:19] Epoch 019 | train: loss=nan  l1=nan  kl=0.3794  lpips=nan  bce=nan | val: loss=4.2090  acc=0.4996  l1=0.6576  kl=0.3794  bce=0.7103
+[23:22:20] Sample → samples/epoch_019.png
+[23:23:11] Epoch 020 | train: loss=nan  l1=nan  kl=0.3794  lpips=nan  bce=nan | val: loss=4.2087  acc=0.4986  l1=0.6576  kl=0.3794  bce=0.7102
+[23:23:12] Sample → samples/epoch_020.png
+[23:24:10] Epoch 021 | train: loss=nan  l1=nan  kl=0.3794  lpips=nan  bce=nan | val: loss=4.2067  acc=0.4985  l1=0.6576  kl=0.3793  bce=0.7098
+[23:24:10] Sample → samples/epoch_021.png
+[23:25:02] Epoch 022 | train: loss=nan  l1=nan  kl=0.3795  lpips=nan  bce=nan | val: loss=4.2084  acc=0.4998  l1=0.6576  kl=0.3793  bce=0.7101
+[23:25:02] Sample → samples/epoch_022.png
+[23:25:55] Epoch 023 | train: loss=nan  l1=nan  kl=0.3794  lpips=nan  bce=nan | val: loss=4.1952  acc=0.5049  l1=0.6576  kl=0.3792  bce=0.7075
+[23:25:56] Sample → samples/epoch_023.png
+[23:26:57] Epoch 024 | train: loss=nan  l1=nan  kl=0.3795  lpips=nan  bce=nan | val: loss=4.2055  acc=0.4994  l1=0.6576  kl=0.3793  bce=0.7096
+[23:26:58] Sample → samples/epoch_024.png
+[23:27:50] Epoch 025 | train: loss=nan  l1=nan  kl=0.3794  lpips=nan  bce=nan | val: loss=4.2040  acc=0.5025  l1=0.6576  kl=0.3793  bce=0.7093
+[23:27:51] Sample → samples/epoch_025.png
+[23:28:42] Epoch 026 | train: loss=nan  l1=nan  kl=0.3795  lpips=nan  bce=nan | val: loss=4.2111  acc=0.4982  l1=0.6576  kl=0.3792  bce=0.7107
+[23:28:43] Sample → samples/epoch_026.png

@@ -1,0 +1,3 @@
+[21:14:30] Device: cuda
+[21:14:30] Config: configs/stage1_vae.yaml  Override: configs/experiments/quick_test.yaml
+[21:14:30] Train: 50 samples, Val: 20 samples

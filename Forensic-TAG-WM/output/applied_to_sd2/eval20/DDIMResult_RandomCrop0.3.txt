@@ -1,0 +1,1 @@
+tpr_detection:1.0      tpr_traceability:1.0      mean_acc:0.868359375      std_acc:0.03331721401301159      mean_clip_score:0      std_clip_score:0.0      
