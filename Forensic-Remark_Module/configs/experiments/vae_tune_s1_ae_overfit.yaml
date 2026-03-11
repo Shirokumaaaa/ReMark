@@ -1,0 +1,32 @@
+# 过拟合能力验证：把 VAE 退化为 deterministic AE（无 KL/无 BCE/无攻击）
+# 目标：验证当前架构在 tiny 数据上能否重建清晰图像
+
+model:
+  deterministic_latent: true
+
+training:
+  epochs: 80
+  batch_size: 8
+  lr: 4.0e-4
+  kl_warmup_epochs: 20
+  save_freq: 10
+  val_freq: 1
+
+losses:
+  l1:    { weight: 1.0 }
+  lpips: { weight: 0.0, enabled: false }
+  bce:   { weight: 0.0, enabled: false }
+  kl:    { weight: 0, target_weight: 0.0, warmup: false }
+
+attacks:
+  online: []
+  offline: []
+
+data:
+  train_csv: data_manifests/local_celeba_hq_128_tiny_train.csv
+  val_csv:   data_manifests/local_celeba_hq_128_tiny_val.csv
+
+preflight_eval:
+  enabled: true
+  max_batches: 8
+  save_csv: true

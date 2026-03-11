@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import csv
 import json
+import os
 from pathlib import Path
 import sys
 
@@ -8,12 +9,14 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.append(str(ROOT_DIR))
 
-from arc2face.expression_generator import Arc2FaceExpressionGenerator, ExpressionGenerationConfig
-
-
 def load_config(cfg_path: Path) -> dict:
     with cfg_path.open("r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def resolve_reference(row: dict) -> str:
+    # Keep scene/background close to target by default.
+    return row.get("reference_image") or row["expression_image"]
 
 
 def main() -> None:
@@ -27,6 +30,9 @@ def main() -> None:
     start_index = int(cfg_all.get("start_index", 0))
     strict_cuda = bool(cfg_all.get("strict_cuda_provider", True))
     cfg = cfg_all["config"]
+    os.environ["ARC2FACE_MODELS_DIR"] = models_dir
+
+    from arc2face.expression_generator import Arc2FaceExpressionGenerator, ExpressionGenerationConfig
 
     output_dir.mkdir(parents=True, exist_ok=True)
     log_path = output_dir / "generation_results.jsonl"
@@ -56,7 +62,7 @@ def main() -> None:
             idx = int(row.get("index", -1))
             source = row["source_image"]
             expression = row["expression_image"]
-            reference = row.get("reference_image") or source
+            reference = resolve_reference(row)
             result = {
                 "index": idx,
                 "source_image": source,

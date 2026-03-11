@@ -1,3 +1,0 @@
-[09:51:46] Run dir   : /mnt/personal_workspace/chenkeyu/ReMark/Forensic-Remark_Module/runs/stage1_20260309_0951
-[09:51:46] Device    : cpu  |  world_size: 1
-[09:51:46] Train: 17501 samples  Val: 2156 samples  (1093 steps/epoch/GPU)

@@ -1,6 +1,7 @@
 import threading
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Union
+import os
 
 import numpy as np
 import onnxruntime as ort
@@ -59,11 +60,29 @@ class Arc2FaceExpressionGenerator:
         providers = ["CPUExecutionProvider"]
         ctx_id = -1
         if self.device == "cuda":
-            providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+            providers = ["CUDAExecutionProvider"] if strict_cuda_provider \
+                else ["CUDAExecutionProvider", "CPUExecutionProvider"]
             ctx_id = 0
 
-        self.app = FaceAnalysis(name="antelopev2", root="./", providers=providers)
+        # InsightFace expects `<root>/models/antelopev2`; with models_dir=/.../Arc2Face/models,
+        # root should be `/.../Arc2Face`.
+        face_root = os.path.dirname(os.path.abspath(self.models_dir))
+        self.app = FaceAnalysis(name="antelopev2", root=face_root, providers=providers)
         self.app.prepare(ctx_id=ctx_id, det_size=(256, 256))
+        if self.device == "cuda" and strict_cuda_provider:
+            bad = []
+            for name, model in getattr(self.app, "models", {}).items():
+                sess = getattr(model, "session", None)
+                if sess is None:
+                    continue
+                prov = list(sess.get_providers())
+                if not prov or prov[0] != "CUDAExecutionProvider":
+                    bad.append((name, prov))
+            if bad:
+                raise RuntimeError(
+                    "InsightFace did not bind CUDAExecutionProvider for all models. "
+                    f"Detected providers: {bad}"
+                )
         self.fa = None
 
         encoder = CLIPTextModelWrapper.from_pretrained(

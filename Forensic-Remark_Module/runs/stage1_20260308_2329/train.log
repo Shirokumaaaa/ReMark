@@ -1,6 +1,0 @@
-[23:29:10] Run dir   : /mnt/personal_workspace/chenkeyu/ReMark/Forensic-Remark_Module/runs/stage1_20260308_2329
-[23:29:10] Device    : cuda:0  |  world_size: 4
-[23:29:11] Train: 50 samples  Val: 20 samples  (3 steps/epoch/GPU)
-[23:29:23] Online attack loaded: stargan
-[23:29:23] lr=4.00e-04  (base 1.00e-04 × 4 GPUs)
-[23:29:23] VAE: 6.4M params

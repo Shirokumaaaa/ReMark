@@ -1,0 +1,29 @@
+wm_model: sepmark
+
+training:
+  epochs: 0
+  batch_size: 4
+
+efficiency:
+  cache_wm_images: false
+  use_amp: false
+  wm_loss_freq: 1
+  attack_num_workers: 0
+
+attacks:
+  online: [simswap]
+  offline: []
+
+attack_options:
+  enforce_nontrivial_swap: true
+  nontrivial_swap_eps: 1.0e-4
+
+data:
+  train_csv: /mnt/personal_workspace/chenkeyu/ReMark/Forensic-Remark_Module/data_manifests/celeba_hq_128_tiny.csv
+  val_csv: /mnt/personal_workspace/chenkeyu/ReMark/Forensic-Remark_Module/data_manifests/celeba_hq_128_tiny_val.csv
+  image_size: 128
+
+preflight_eval:
+  enabled: true
+  max_batches: 4
+  save_csv: true

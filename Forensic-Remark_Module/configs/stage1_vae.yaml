@@ -1,17 +1,24 @@
 model:
   base_channels: 32
   latent_channels: 64
-  downsample_factor: 16          # 128x128 → 8x8 latent
+  downsample_factor: 8           # 128×128 → 16×16 latent（保留更多空间细节）
 
 training:
-  epochs: 200
-  batch_size: 16
-  lr: 3.0e-4
+  epochs: 100
+  batch_size: 64             # per GPU，4× RTX 4090 (24GB)
+  lr: 2.0e-4
   betas: [0.9, 0.999]
   weight_decay: 1.0e-4
-  kl_warmup_epochs: 10
+  kl_warmup_epochs: 20           # 前 20 epoch KL 权重从 0 线性升到目标值
   save_freq: 10
   val_freq: 1
+
+validation:
+  max_batches: 8             # 每次验证最多跑 N 个 batch；0=全量
+
+progress:
+  enabled: true
+  log_interval_steps: 10     # 每 N step 向 train.log 打印一次进度
 
 slerp:
   n_steps: 10
@@ -19,25 +26,41 @@ slerp:
 losses:
   l1:    { weight: 1.0 }
   lpips: { weight: 0.1 }
-  bce:   { weight: 5.0 }
-  kl:    { weight: 1.0e-4, warmup: true }
+  bce:   { weight: 3.0 }
+  kl:    { weight: 0, target_weight: 0.01, warmup: true }
 
 efficiency:
   cache_wm_images: false
-  use_amp: true
+  use_amp: false
   wm_loss_freq: 1
-  attack_num_workers: 2
+  attack_num_workers: 0
 
-wm_model: fin
+wm_model: sepmark
+wm_adapter_sepmark:
+  image_size: 256
+  message_length: 128
+  message_range: 0.1
+  attention_encoder: se
+  attention_decoder: se
+  decoder_head: c   # c 或 rf
+  # 可选：自定义 SepMark 根目录/权重
+  # root: /abs/path/to/Forensic-SepMark
+  # ckpt: /abs/path/to/EC_xx.pth
 
 attacks:
   online:  [stargan]
   offline: []
 
+
 data:
-  train_csv: data_manifests/celeba_hq_128_train.csv
-  val_csv:   data_manifests/celeba_hq_128_val.csv
+  train_csv: data_manifests/celeba_hq_128_train_10k.csv
+  val_csv: data_manifests/celeba_hq_128_val.csv
   image_size: 128
 
 paths:
   runs_dir: runs
+
+preflight_eval:
+  enabled: true
+  max_batches: 0     # 0=全量验证集；>0=仅前N个batch（用于快速对比）
+  save_csv: false

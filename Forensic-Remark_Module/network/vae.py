@@ -86,7 +86,8 @@ class Encoder(nn.Module):
     def __init__(self, in_channels=3, base_channels=32, latent_channels=64,
                  n_downsample=4, n_res=2):
         super().__init__()
-        ch_list = [base_channels * m for m in [1, 2, 4, 8][:n_downsample]]
+        # 按下采样层数动态生成通道：n=4 -> [1,2,4,8] * base；n=3 -> [1,2,4] * base
+        ch_list = [base_channels * (2 ** i) for i in range(n_downsample)]
 
         # 输入投影：in_channels → ch_list[0]，用 3×3 卷积保留局部信息
         layers = [nn.Conv2d(in_channels, ch_list[0], 3, padding=1)]
@@ -135,7 +136,9 @@ class Decoder(nn.Module):
     def __init__(self, out_channels=3, base_channels=32, latent_channels=64,
                  n_upsample=4, n_res=2):
         super().__init__()
-        ch_list = [base_channels * m for m in [8, 4, 2, 1][:n_upsample]]
+        # 与 Encoder 对称：n=4 -> [8,4,2,1] * base；n=3 -> [4,2,1] * base
+        ch_list = [base_channels * (2 ** (n_upsample - i - 1))
+                   for i in range(n_upsample)]
 
         # z → 最深层通道数，再加一个 bottleneck ResBlock
         layers = [
@@ -185,12 +188,16 @@ class ReMark_VAE(nn.Module):
     """
 
     def __init__(self, in_channels=3, base_channels=32, latent_channels=64,
-                 n_downsample=4, n_res=2):
+                 n_downsample=4, n_res=2, deterministic_latent: bool = False,
+                 residual_output: bool = False, residual_scale: float = 1.0):
         super().__init__()
         self.encoder = Encoder(in_channels, base_channels, latent_channels,
                                n_downsample, n_res)
         self.decoder = Decoder(in_channels, base_channels, latent_channels,
                                n_downsample, n_res)
+        self.deterministic_latent = deterministic_latent
+        self.residual_output = residual_output
+        self.residual_scale = residual_scale
 
     def encode(self, x) -> tuple:
         """返回 (mu, logvar)"""
@@ -202,8 +209,8 @@ class ReMark_VAE(nn.Module):
 
     def reparameterize(self, mu: torch.Tensor,
                        logvar: torch.Tensor) -> torch.Tensor:
-        """训练时重参数化采样；推理时直接用 mu"""
-        if self.training:
+        """训练时可选重参数化采样；推理时始终直接用 mu"""
+        if self.training and (not self.deterministic_latent):
             std = (0.5 * logvar).exp()
             return mu + std * torch.randn_like(std)
         return mu
@@ -220,6 +227,8 @@ class ReMark_VAE(nn.Module):
         mu, logvar = self.encode(x)
         z = self.reparameterize(mu, logvar)
         x_hat = self.decode(z)
+        if self.residual_output:
+            x_hat = torch.clamp(x + self.residual_scale * x_hat, -1.0, 1.0)
         return x_hat, mu, logvar
 
 
@@ -234,4 +243,7 @@ def build_vae(cfg) -> ReMark_VAE:
         latent_channels=getattr(cfg.model, 'latent_channels', 64),
         n_downsample=n_downsample,
         n_res=getattr(cfg.model, 'n_res', 2),
+        deterministic_latent=getattr(cfg.model, 'deterministic_latent', False),
+        residual_output=getattr(cfg.model, 'residual_output', False),
+        residual_scale=float(getattr(cfg.model, 'residual_scale', 1.0)),
     )

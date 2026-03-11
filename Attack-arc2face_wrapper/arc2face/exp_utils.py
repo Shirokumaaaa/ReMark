@@ -16,8 +16,11 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 import timm
+import os
 
-base_options = python.BaseOptions(model_asset_path='models/smirk/face_landmarker.task')
+_MODELS_DIR = os.environ.get("ARC2FACE_MODELS_DIR", "models")
+_LANDMARKER = os.path.join(_MODELS_DIR, "smirk", "face_landmarker.task")
+base_options = python.BaseOptions(model_asset_path=_LANDMARKER)
 options = vision.FaceLandmarkerOptions(base_options=base_options,
                                     output_face_blendshapes=True,
                                     output_facial_transformation_matrixes=True,

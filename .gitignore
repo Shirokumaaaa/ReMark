@@ -24,6 +24,7 @@ generation_results.jsonl
 *.mp4
 *.mov
 *.avi
+*.log
 *.mkv
 datasets/
 dataset*/
@@ -52,3 +53,14 @@ Forensic-LampMark/weights/
 Forensic-LampMark/results/
 Forensic-LampMark/checkpoints/
 Forensic-LampMark/datasets/
+
+# Experiment artifacts (do not upload)
+logs/
+Forensic-Remark_Module/runs/
+Forensic-SepMark/runs/
+Forensic-TrustMark/python/output*/
+*.egg-info/
+
+# Temporary download/cache files
+Dataset-FF++/**/videos/tmp*
+Dataset-FFHQ/*.tmp.*

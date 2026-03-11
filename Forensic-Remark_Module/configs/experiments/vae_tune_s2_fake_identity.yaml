@@ -1,0 +1,42 @@
+# VAE 快速稳定性测试（阶段2）：开启 fake 分支 identity 重建，轻量 BCE 保持消息可读性
+# 用法：
+#   conda run -n sepmark python train_stage1.py \
+#       --config configs/stage1_vae.yaml \
+#       --override configs/experiments/vae_tune_s2_fake_identity.yaml
+
+training:
+  epochs: 20
+  batch_size: 8
+  lr: 2.0e-4
+  kl_warmup_epochs: 20
+  save_freq: 5
+  val_freq: 1
+
+losses:
+  l1:    { weight: 1.0 }
+  lpips: { weight: 0.0, enabled: false }
+  bce:   { weight: 0.5 }
+  kl:    { weight: 0, target_weight: 0.003, warmup: true }
+
+attacks:
+  online:  [stargan]
+  offline: []
+
+alternating_train:
+  enabled: true
+  warmup_epochs: 3
+  warmup_prob: 0.20
+  mid_start_epoch: 6
+  mid_prob: 0.35
+  late_start_epoch: 10
+  main_prob: 0.50
+  late_prob: 0.45
+
+data:
+  train_csv: data_manifests/local_celeba_hq_128_tiny_train.csv
+  val_csv:   data_manifests/local_celeba_hq_128_tiny_val.csv
+
+preflight_eval:
+  enabled: true
+  max_batches: 8
+  save_csv: true

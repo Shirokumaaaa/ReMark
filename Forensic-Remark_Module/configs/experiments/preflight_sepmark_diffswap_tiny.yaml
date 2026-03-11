@@ -1,0 +1,42 @@
+wm_model: sepmark
+
+model:
+  base_channels: 24
+  latent_channels: 48
+  downsample_factor: 8
+  n_res: 2
+  deterministic_latent: true
+  residual_output: true
+  residual_scale: 0.5
+
+training:
+  epochs: 0
+  batch_size: 4
+
+efficiency:
+  cache_wm_images: false
+  use_amp: false
+  wm_loss_freq: 1
+  attack_num_workers: 0
+
+attacks:
+  online: [DiffSwap]
+  offline: []
+
+attack_options:
+  diffswap_results_jsonl: /mnt/personal_workspace/chenkeyu/ReMark/Attack-DiffSwap/outputs/generation_results.jsonl
+  diffswap_outputs_base: /mnt/personal_workspace/chenkeyu/ReMark/Attack-DiffSwap/outputs
+  diffswap_replay_key: source_image
+  diffswap_allow_missing: false
+  enforce_nontrivial_swap: true
+  nontrivial_swap_eps: 1.0e-4
+
+data:
+  train_csv: data_manifests/celeba_hq_128_tiny.csv
+  val_csv: data_manifests/celeba_hq_128_tiny_val.csv
+  image_size: 128
+
+preflight_eval:
+  enabled: true
+  max_batches: 4
+  save_csv: true

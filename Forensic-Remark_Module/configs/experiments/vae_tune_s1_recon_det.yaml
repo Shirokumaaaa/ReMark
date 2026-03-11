@@ -1,0 +1,31 @@
+# VAE 快速稳定性测试（阶段1-DET）：clean 重建 + 确定性 latent（训练时直接用 mu）
+
+model:
+  deterministic_latent: true
+
+training:
+  epochs: 20
+  batch_size: 8
+  lr: 2.0e-4
+  kl_warmup_epochs: 20
+  save_freq: 5
+  val_freq: 1
+
+losses:
+  l1:    { weight: 1.0 }
+  lpips: { weight: 0.0, enabled: false }
+  bce:   { weight: 0.0, enabled: false }
+  kl:    { weight: 0, target_weight: 0.003, warmup: true }
+
+attacks:
+  online: []
+  offline: []
+
+data:
+  train_csv: data_manifests/local_celeba_hq_128_tiny_train.csv
+  val_csv:   data_manifests/local_celeba_hq_128_tiny_val.csv
+
+preflight_eval:
+  enabled: true
+  max_batches: 8
+  save_csv: true

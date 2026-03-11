@@ -41,6 +41,16 @@ class StarGANAttack(BaseAttack):
 
     def __init__(self, cfg):
         super().__init__(cfg)
+        self.random_domain = bool(getattr(getattr(cfg, 'attack_options', None),
+                                          'stargan_random_domain', True))
+        self.fixed_domain = int(getattr(getattr(cfg, 'attack_options', None),
+                                        'stargan_fixed_domain', 0))
+        self.mode = str(getattr(getattr(cfg, 'attack_options', None),
+                                'stargan_mode', 'latent')).lower()
+        self.source_mode = str(getattr(getattr(cfg, 'attack_options', None),
+                                       'stargan_source_mode', 'self')).lower()
+        self.blend_alpha = float(getattr(getattr(cfg, 'attack_options', None),
+                                         'stargan_blend_alpha', 1.0))
         self._load_model()
 
     def _load_model(self):
@@ -72,12 +82,56 @@ class StarGANAttack(BaseAttack):
         finally:
             sys.argv = _saved_argv
             os.chdir(_saved_cwd)
+        self._force_load_checkpoint(self._model)
         self._model.eval()
         for p in self._model.parameters():
             p.requires_grad_(False)
         _unwrap_data_parallel(self._model)   # 防止 DDP 多进程争抢同一张卡
+        self._mapping_network = getattr(
+            self._model.solver, "mapping_network_ema",
+            getattr(self._model.solver, "mapping_network", None)
+        )
 
         StarGANAttack._model_instance = self._model
+
+    def _force_load_checkpoint(self, model):
+        """
+        强制正确加载 StarGAN checkpoint。
+        deepfake_manipulations.py 内部的手动加载会把 state_dict 喂给 DataParallel 外壳，
+        key 缺少 `module.` 前缀时可能静默失败，这里显式加载到 `.module`。
+        """
+        ckpt_path = os.path.join(
+            _LAMPMARK_ROOT,
+            "model", "stargan", "expr", "checkpoints", "celeba_hq",
+            f"{model.args.resume_iter:06d}_nets_ema.ckpt"
+        )
+        if not os.path.exists(ckpt_path):
+            raise FileNotFoundError(f"StarGAN checkpoint not found: {ckpt_path}")
+
+        ckpt = torch.load(ckpt_path, map_location='cpu')
+        loaded = []
+
+        def _load_group(group):
+            for name, net in group.items():
+                if name not in ckpt:
+                    continue
+                target = net.module if isinstance(net, nn.DataParallel) else net
+                msg = target.load_state_dict(ckpt[name], strict=False)
+                loaded.append((name, len(msg.missing_keys), len(msg.unexpected_keys)))
+
+        _load_group(model.solver.nets)
+        _load_group(model.solver.nets_ema)
+
+        # 重新绑定 inference 使用对象（确保用到刚加载的 EMA 权重）
+        model.generator = getattr(model.solver, "generator_ema", model.solver.generator)
+        model.style_encoder = getattr(model.solver, "style_encoder_ema", model.solver.style_encoder)
+        model.fan = getattr(model.solver, "fan_ema", model.solver.fan)
+
+        if not loaded:
+            raise RuntimeError(
+                f"StarGAN checkpoint loaded 0 modules from {ckpt_path}. "
+                "Please check checkpoint structure."
+            )
 
     def preprocess(self, images: torch.Tensor) -> torch.Tensor:
         """
@@ -93,17 +147,87 @@ class StarGANAttack(BaseAttack):
         """
         device = preprocessed.device
         self._model.to(device)
-
-        img_source = torch.roll(preprocessed, 1, 0)
-        y_trg = torch.randint(2, size=(preprocessed.shape[0],),
-                              dtype=torch.long, device=device)
-        s_ref = self._model.style_encoder(preprocessed, y_trg)
-        masks = self._model.fan.get_heatmap(preprocessed) \
+        img_source = preprocessed if self.source_mode == 'self' else torch.roll(preprocessed, 1, 0)
+        if self.random_domain:
+            y_trg = torch.randint(2, size=(preprocessed.shape[0],),
+                                  dtype=torch.long, device=device)
+        else:
+            y_trg = torch.full((preprocessed.shape[0],), self.fixed_domain,
+                               dtype=torch.long, device=device)
+        s_ref = self._get_style_code(preprocessed, y_trg)
+        masks = self._model.fan.get_heatmap(img_source) \
             if self._model.args.w_hpf > 0 else None
 
         with torch.no_grad():
             fake = self._model.generator(img_source, s_ref, masks=masks)
+            fake = self._blend_with_source(fake, img_source)
         return fake
+
+    def attack_with_cover(self, wm_images: torch.Tensor,
+                          cover_images: torch.Tensor) -> torch.Tensor:
+        """
+        与 LampMark 的 StarGanModel.forward 对齐：
+          source <- roll(clean cover)
+          target/style <- wm image
+        这通常比仅用 wm_images 自身构造 source 更稳定。
+        """
+        original_size = (wm_images.shape[-2], wm_images.shape[-1])
+        wm_pre = self.preprocess(wm_images)
+        cover_pre = self.preprocess(cover_images)
+
+        device = wm_pre.device
+        self._model.to(device)
+
+        if self.source_mode == 'self':
+            img_source = wm_pre
+        else:
+            img_source = torch.roll(cover_pre, 1, 0)
+        if self.random_domain:
+            y_trg = torch.randint(2, size=(wm_pre.shape[0],),
+                                  dtype=torch.long, device=device)
+        else:
+            y_trg = torch.full((wm_pre.shape[0],), self.fixed_domain,
+                               dtype=torch.long, device=device)
+        s_ref = self._get_style_code(wm_pre, y_trg)
+        masks = self._model.fan.get_heatmap(img_source) \
+            if self._model.args.w_hpf > 0 else None
+        with torch.no_grad():
+            fake = self._model.generator(img_source, s_ref, masks=masks)
+            fake = self._blend_with_source(fake, wm_pre)
+
+        out = self.postprocess(fake, original_size)
+        self._validate_output(out, original_size)
+        self._check_silent_failure(wm_images, out)
+        return out
+
+    def _blend_with_source(self, fake: torch.Tensor, source: torch.Tensor) -> torch.Tensor:
+        """
+        通过 source-fake 融合降低“换人感”。
+        alpha 越小越接近原图，越大越接近 deepfake 输出。
+        """
+        a = min(max(self.blend_alpha, 0.0), 1.0)
+        if a <= 0.0:
+            return source
+        if a >= 1.0:
+            return fake
+        return source * (1.0 - a) + fake * a
+
+    def _get_style_code(self, ref_or_target: torch.Tensor, y_trg: torch.Tensor) -> torch.Tensor:
+        """
+        StarGAN style 生成模式：
+          - latent（默认）：mapping_network(z, y)，更稳定，不依赖 ref 域标签一致性
+          - reference：style_encoder(ref, y)
+        """
+        if self.mode == 'reference':
+            return self._model.style_encoder(ref_or_target, y_trg)
+
+        if self._mapping_network is None:
+            # 回退到 reference，避免因模型结构差异直接报错
+            return self._model.style_encoder(ref_or_target, y_trg)
+
+        z = torch.randn(ref_or_target.shape[0], self._model.args.latent_dim,
+                        device=ref_or_target.device)
+        return self._mapping_network(z, y_trg)
 
     def postprocess(self, output: torch.Tensor, original_size: tuple) -> torch.Tensor:
         """

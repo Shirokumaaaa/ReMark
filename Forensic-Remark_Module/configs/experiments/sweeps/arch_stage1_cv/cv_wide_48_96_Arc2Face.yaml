@@ -1,0 +1,54 @@
+model:
+  base_channels: 48
+  latent_channels: 96
+  downsample_factor: 8
+  n_res: 2
+  deterministic_latent: true
+  residual_output: true
+  residual_scale: 0.5
+training:
+  epochs: 20
+  batch_size: 4
+  lr: 0.0003
+  kl_warmup_epochs: 20
+  save_freq: 10
+  val_freq: 1
+losses:
+  l1:
+    weight: 1.0
+  lpips:
+    weight: 0.0
+    enabled: false
+  bce:
+    weight: 1.0
+  kl:
+    weight: 0
+    target_weight: 0.001
+    warmup: false
+attacks:
+  online:
+  - Arc2Face
+  offline: []
+attack_options:
+  arc2face_results_jsonl: /mnt/personal_workspace/chenkeyu/ReMark/Attack-arc2face_wrapper/outputs/generation_results.jsonl
+  arc2face_outputs_base: /mnt/personal_workspace/chenkeyu/ReMark/Attack-arc2face_wrapper
+  arc2face_replay_key: source_image
+  arc2face_allow_missing: false
+  enforce_nontrivial_swap: true
+  nontrivial_swap_eps: 0.0001
+alternating_train:
+  enabled: true
+  warmup_epochs: 0
+  warmup_prob: 1.0
+  mid_start_epoch: 1
+  mid_prob: 1.0
+  late_start_epoch: 2
+  main_prob: 1.0
+  late_prob: 1.0
+data:
+  train_csv: data_manifests/celeba_hq_128_tiny_val.csv
+  val_csv: data_manifests/celeba_hq_128_tiny_val.csv
+preflight_eval:
+  enabled: true
+  max_batches: 4
+  save_csv: true

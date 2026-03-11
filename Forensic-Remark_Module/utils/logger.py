@@ -8,8 +8,7 @@ RunLogger — 训练日志管理器
   runs/
     stage1_20260308_2113/          ← 一个 run = 一条记录，一眼看清
       config.yaml                  ← 配置快照，便于复现
-      train.log                    ← 文本日志（只记录每 epoch 摘要）
-      metrics.csv                  ← 机器可读的 per-epoch 指标
+      train.log                    ← 文本日志（每 epoch 摘要 + 验证细项）
       samples/
         epoch_000.png
         epoch_005.png
@@ -21,12 +20,16 @@ RunLogger — 训练日志管理器
                        override_path='configs/experiments/quick_test.yaml',
                        stage='stage1')
     logger.info('Training started')
-    logger.log_epoch(epoch=0, train={'loss': 1.2}, val={'loss': 1.1, 'acc': 0.9})
+    logger.log_epoch(
+        epoch=0,
+        train={'loss': 1.2},
+        val_clean={'loss': 1.1, 'acc': 0.9},
+        val_attacks={'simswap': {'raw_acc': 0.7, 'acc': 0.75}},
+    )
     logger.save_sample({'orig': t1, 'wm': t2, 'fake': t3, 'hat': t4}, epoch=0)
     ckpt_path = logger.checkpoint_path('last')
 """
 
-import csv
 import logging
 import os
 import shutil
@@ -64,20 +67,17 @@ class RunLogger:
                     f"续训目录不存在: {self.run_dir}"
                 )
         else:
-            ts = datetime.now().strftime('%Y%m%d_%H%M')
+            # 秒级时间戳，避免同一分钟内多次启动 run 目录冲突
+            ts = datetime.now().strftime('%Y%m%d_%H%M%S')
             self.run_dir = os.path.join(runs_root, f'{stage}_{ts}')
 
         self.sample_dir = os.path.join(self.run_dir, 'samples')
         self.ckpt_dir   = os.path.join(self.run_dir, 'checkpoints')
-        self._metrics_path = os.path.join(self.run_dir, 'metrics.csv')
 
         os.makedirs(self.sample_dir, exist_ok=True)
         os.makedirs(self.ckpt_dir,   exist_ok=True)
 
         self._logger = self._setup_text_logger()
-        self._csv_writer = None
-        self._csv_file   = None
-        self._csv_cols   = None
 
         if not resume_run:
             self._save_config_snapshot(cfg, config_path, override_path)
@@ -110,52 +110,40 @@ class RunLogger:
     def warning(self, msg: str):
         self._logger.warning(msg)
 
-    # ── 指标 CSV ─────────────────────────────────────────────────────────────
+    # ── Epoch 摘要 ───────────────────────────────────────────────────────────
 
     def log_epoch(self, epoch: int,
-                  train: dict = None, val: dict = None):
+                  train: dict = None,
+                  val_clean: dict = None,
+                  val_attacks: dict = None):
         """
-        记录一个 epoch 的指标到文本日志和 metrics.csv。
+        记录一个 epoch 的摘要到 train.log。
 
         Args:
             epoch: 当前 epoch 编号
             train: {'loss': 1.2, 'l1': 0.5, ...}（训练集指标）
-            val:   {'loss': 1.1, 'acc': 0.9, ...}（验证集指标，可含不同 key）
+            val_clean: {'loss': 1.1, 'acc': 0.9, ...}（wm->rec_wm）
+            val_attacks: {
+                'simswap': {'raw_acc': 0.70, 'acc': 0.75, ...},
+                'stargan': {'raw_acc': 0.60, 'acc': 0.62, ...},
+              }（fake->rec_fake，按攻击名分组）
         """
         train = train or {}
-        val   = val   or {}
+        val_clean = val_clean or {}
+        val_attacks = val_attacks or {}
 
-        # 文本日志：一行摘要
         train_str = '  '.join(f'{k}={v:.4f}' for k, v in train.items())
-        val_str   = '  '.join(f'{k}={v:.4f}' for k, v in val.items())
-        self.info(f'Epoch {epoch:03d} | train: {train_str} | val: {val_str}')
-
-        # CSV
-        row = {'epoch': epoch}
-        row.update({f'train_{k}': v for k, v in train.items()})
-        row.update({f'val_{k}':   v for k, v in val.items()})
-        self._write_csv_row(row)
-
-    def _write_csv_row(self, row: dict):
-        cols = list(row.keys())
-
-        # 首次写入：建立列头（可能随 epoch 增加新 key，如 lpips）
-        if self._csv_cols is None:
-            self._csv_cols = cols
-            self._csv_file = open(self._metrics_path, 'a', newline='')
-            self._csv_writer = csv.DictWriter(
-                self._csv_file, fieldnames=self._csv_cols,
-                extrasaction='ignore')
-            # 只在文件为空时写 header
-            if os.path.getsize(self._metrics_path) == 0:
-                self._csv_writer.writeheader()
-
-        self._csv_writer.writerow(row)
-        self._csv_file.flush()
+        clean_str = '  '.join(f'{k}={v:.4f}' for k, v in val_clean.items())
+        parts = [f'Epoch {epoch:03d}', f'train: {train_str}', f'val_clean(wm->rec_wm): {clean_str}']
+        for attack_name in sorted(val_attacks.keys()):
+            atk_metrics = val_attacks[attack_name]
+            atk_str = '  '.join(f'{k}={v:.4f}' for k, v in atk_metrics.items())
+            parts.append(f'val_attack[{attack_name}](fake->rec_fake): {atk_str}')
+        self.info(' | '.join(parts))
 
     def close(self):
-        if self._csv_file:
-            self._csv_file.close()
+        # 仅文本日志，无需额外文件句柄清理
+        return
 
     # ── 样例图 ────────────────────────────────────────────────────────────────
 

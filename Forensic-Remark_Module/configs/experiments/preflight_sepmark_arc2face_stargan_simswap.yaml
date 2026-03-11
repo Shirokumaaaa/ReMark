@@ -1,0 +1,66 @@
+wm_model: sepmark
+
+wm_adapter_sepmark:
+  image_size: 256
+  message_length: 128
+  message_range: 0.1
+  attention_encoder: se
+  attention_decoder: se
+  decoder_head: c
+
+model:
+  base_channels: 32
+  latent_channels: 64
+  downsample_factor: 16
+
+training:
+  epochs: 0
+  batch_size: 4
+  lr: 2.0e-4
+  betas: [0.9, 0.999]
+  weight_decay: 1.0e-4
+  kl_warmup_epochs: 6
+  save_freq: 10
+  val_freq: 1
+
+slerp:
+  n_steps: 10
+
+losses:
+  l1: { weight: 1.0 }
+  lpips: { weight: 0.1 }
+  bce: { weight: 3.0 }
+  kl: { weight: 0, warmup: true }
+
+efficiency:
+  cache_wm_images: false
+  use_amp: false
+  wm_loss_freq: 1
+  attack_num_workers: 0
+
+attacks:
+  online: [Arc2Face, stargan, simswap]
+  offline: []
+
+attack_options:
+  arc2face_results_jsonl: /mnt/personal_workspace/chenkeyu/ReMark/Attack-arc2face_wrapper/outputs/generation_results.jsonl
+  arc2face_outputs_base: /mnt/personal_workspace/chenkeyu/ReMark/Attack-arc2face_wrapper
+  arc2face_replay_key: source_image
+  arc2face_allow_missing: false
+  stargan_mode: latent
+  stargan_source_mode: self
+  stargan_random_domain: true
+  stargan_blend_alpha: 1.0
+
+data:
+  train_csv: /mnt/personal_workspace/chenkeyu/ReMark/Forensic-Remark_Module/data_manifests/celeba_hq_128_tiny.csv
+  val_csv: /mnt/personal_workspace/chenkeyu/ReMark/Forensic-Remark_Module/data_manifests/celeba_hq_128_tiny_val.csv
+  image_size: 128
+
+paths:
+  runs_dir: /mnt/personal_workspace/chenkeyu/ReMark/Forensic-Remark_Module/runs
+
+preflight_eval:
+  enabled: true
+  max_batches: 0
+  save_csv: true
