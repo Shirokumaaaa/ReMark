@@ -1,0 +1,51 @@
+###############################################
+# REFace 扩展依赖（不包含核心版本）
+#
+# 使用方式（在已激活 REFace 环境中）：
+#   cd D:\Desktop\test-model\2-REFace-main
+#   pip install -r 环境配置\requirements_env.txt
+#
+# 注意：
+# - 这里**刻意不包含**以下“核心包”，这些请严格按《环境配置总览.md》里前面单独安装：
+#   - numpy（固定 1.x，例如 1.26.4）
+#   - torch / torchvision / torchaudio（三件套）
+#   - pytorch-lightning / torchmetrics
+#   - setuptools
+#   - dlib（建议用 conda-forge 或按需单独安装）
+###############################################
+
+cmake
+transformers==4.19.2
+albumentations==1.1.0
+bezier==2023.7.28
+diffusers==0.30.3
+dift==0.0.7
+einops==0.4.1
+face_alignment==1.4.1
+ftfy==6.0.3
+glfw==2.7.0
+imageio==2.14.1
+invisible_watermark==0.2.0
+kornia==0.6.0
+matplotlib==3.7.5
+more_itertools==10.5.0
+moviepy==1.0.3
+natsort==8.4.0
+opencv_python
+packaging==24.1
+pandas==2.0.3
+Pillow==9.0.1
+proglog==0.1.10
+pudb==2019.2
+PyOpenGL==3.1.7
+PyYAML==6.0.2
+regex==2024.9.11
+Requests==2.32.3
+scipy==1.9.1
+scikit-image==0.20.0
+streamlit==0.73.1
+tqdm==4.66.5
+trimesh==4.4.9
+typing_extensions==4.12.2
+wandb==0.18.1
+
