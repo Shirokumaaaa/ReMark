@@ -1,3 +1,4 @@
+
 import os
 import sys
 import cv2
@@ -38,6 +39,28 @@ def convert_batch_to_nprgb(batch, nrow):
     grid_tensor = ttf.make_grid(batch * 0.5 + 0.5, nrow=nrow)
     im_rgb = (255 * grid_tensor.permute(1, 2, 0).cpu().numpy()).astype('uint8')
     return im_rgb    
+
+def get_largest_face(app, pil_image, img_path=None, stage_desc=""):
+    """
+    NOTE (custom modification):
+    - 原代码在未检测到人脸时，直接对空列表做 sorted(...)[-1]，会触发 IndexError。
+    - 本函数在多人协作中由后续贡献者新增，用于统一处理“未检测到人脸时直接跳过该图像”，避免程序中断。
+    """
+    face_info = app.get(cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR))
+    if len(face_info) == 0:
+        msg = "No face detected"
+        if img_path is not None:
+            msg += f" in image: {img_path}"
+        if stage_desc:
+            msg += f" ({stage_desc})"
+        print(msg)
+        return None
+    # 使用 bbox 面积选择最大人脸
+    face_info = sorted(
+        face_info,
+        key=lambda x: (x["bbox"][2] - x["bbox"][0]) * (x["bbox"][3] - x["bbox"][1]),
+    )[-1]
+    return face_info
 
 def infer(args):
 
@@ -88,7 +111,7 @@ def infer(args):
     net_seg_res18 = model_seg_unet.UNet().eval().to(device)
     net_seg_res18.load_state_dict(torch.load(os.path.join(args.checkpoint, 'net_seg_res18.pth')))
     app = FaceAnalysis(name='antelopev2', root=os.path.join(args.checkpoint, 'third_party'), providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
-    app.prepare(ctx_id=0, det_size=(640, 640))
+    app.prepare(ctx_id=0, det_size=(640,640),det_thresh=0.05)
 
     src_img_list = [x for x in os.listdir(args.source) if x.endswith('.png') or x.endswith('.jpg') or x.endswith('.jpeg')]
     src_img_list.sort()
@@ -102,8 +125,13 @@ def infer(args):
         
         
         # ===== insightface detect 5pts
-        face_info = app.get(cv2.cvtColor(np.array(src_im_pil), cv2.COLOR_RGB2BGR))
-        face_info = sorted(face_info, key=lambda x:(x['bbox'][2]-x['bbox'][0])*x['bbox'][3]-x['bbox'][1])[-1] # only use the maximum face
+        # NOTE (custom modification): 统一通过 get_largest_face 处理 source 第一次人脸检测，避免在未检测到人脸时触发 IndexError
+        # face_info = app.get(cv2.cvtColor(np.array(src_im_pil), cv2.COLOR_RGB2BGR))
+        # face_info = sorted(face_info, key=lambda x:(x['bbox'][2]-x['bbox'][0])*x['bbox'][3]-x['bbox'][1])[-1] # only use the maximum face
+        face_info = get_largest_face(app, src_im_pil, src_img_path, stage_desc="src first detect")
+        if face_info is None:
+            # 未检测到人脸，跳过该 source 图像
+            continue
         dets = face_info['bbox']
         
         # scaled box 
@@ -125,8 +153,13 @@ def infer(args):
         warp_mat_crop = datasets_faceswap.transformation_from_points(bbox_pts4, datasets_faceswap.mean_box_lm4p_512)
         src_im_crop512 = cv2.warpAffine(np.array(src_im_pil), warp_mat_crop, (512, 512), flags=cv2.INTER_LINEAR)
         src_im_pil = Image.fromarray(src_im_crop512)
-        face_info = app.get(cv2.cvtColor(np.array(src_im_pil), cv2.COLOR_RGB2BGR))
-        face_info = sorted(face_info, key=lambda x:(x['bbox'][2]-x['bbox'][0])*x['bbox'][3]-x['bbox'][1])[-1] # only use the maximum face
+        # NOTE (custom modification): 统一通过 get_largest_face 处理 source 第二次人脸检测
+        # face_info = app.get(cv2.cvtColor(np.array(src_im_pil), cv2.COLOR_RGB2BGR))
+        # face_info = sorted(face_info, key=lambda x:(x['bbox'][2]-x['bbox'][0])*x['bbox'][3]-x['bbox'][1])[-1] # only use the maximum face
+        face_info = get_largest_face(app, src_im_pil, src_img_path, stage_desc="src crop detect")
+        if face_info is None:
+            # crop 后仍未检测到人脸，跳过该 source 图像
+            continue
         pts5 = face_info['kps']  
         warp_mat = datasets_faceswap.get_affine_transform(pts5, datasets_faceswap.mean_face_lm5p_256)
         src_im_crop256 = cv2.warpAffine(np.array(src_im_pil), warp_mat, (256, 256), flags=cv2.INTER_LINEAR)
@@ -145,8 +178,13 @@ def infer(args):
             drive_im_pil = Image.open(drive_img_path).convert("RGB")   
             
             # ===== insightface detect 5pts
-            face_info = app.get(cv2.cvtColor(np.array(drive_im_pil), cv2.COLOR_RGB2BGR))
-            face_info = sorted(face_info, key=lambda x:(x['bbox'][2]-x['bbox'][0])*x['bbox'][3]-x['bbox'][1])[-1] # only use the maximum face
+            # NOTE (custom modification): 统一通过 get_largest_face 处理目标图第一次人脸检测
+            # face_info = app.get(cv2.cvtColor(np.array(drive_im_pil), cv2.COLOR_RGB2BGR))
+            # face_info = sorted(face_info, key=lambda x:(x['bbox'][2]-x['bbox'][0])*x['bbox'][3]-x['bbox'][1])[-1] # only use the maximum face
+            face_info = get_largest_face(app, drive_im_pil, drive_img_path, stage_desc="tgt first detect")
+            if face_info is None:
+                # 未检测到人脸，跳过该 pair
+                continue
             dets = face_info['bbox']
             
             # scaled box 
@@ -169,8 +207,13 @@ def infer(args):
             drive_im_crop512 = cv2.warpAffine(np.array(drive_im_pil), warp_mat_crop, (512, 512), flags=cv2.INTER_LINEAR)
             drive_im_pil = Image.fromarray(drive_im_crop512)
             
-            face_info = app.get(cv2.cvtColor(np.array(drive_im_pil), cv2.COLOR_RGB2BGR))
-            face_info = sorted(face_info, key=lambda x:(x['bbox'][2]-x['bbox'][0])*x['bbox'][3]-x['bbox'][1])[-1] # only use the maximum face
+            # NOTE (custom modification): 统一通过 get_largest_face 处理目标图第二次人脸检测
+            # face_info = app.get(cv2.cvtColor(np.array(drive_im_pil), cv2.COLOR_RGB2BGR))
+            # face_info = sorted(face_info, key=lambda x:(x['bbox'][2]-x['bbox'][0])*x['bbox'][3]-x['bbox'][1])[-1] # only use the maximum face
+            face_info = get_largest_face(app, drive_im_pil, drive_img_path, stage_desc="tgt crop detect")
+            if face_info is None:
+                # crop 后仍未检测到人脸，跳过该 pair
+                continue
             pts5 = face_info['kps']        
             
             warp_mat = datasets_faceswap.get_affine_transform(pts5, datasets_faceswap.mean_face_lm5p_256)

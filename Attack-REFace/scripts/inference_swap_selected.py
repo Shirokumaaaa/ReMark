@@ -2,6 +2,7 @@ import argparse, os, sys, glob
 import cv2
 import torch
 import numpy as np
+torch.backends.cudnn.enabled = False
 from omegaconf import OmegaConf
 # import pandas as pd
 from PIL import Image
@@ -51,11 +52,13 @@ import torch.nn as nn
 # cos = nn.CosineSimilarity(dim=0)
 import numpy as np  
 
-# load safety model
-safety_model_id = "CompVis/stable-diffusion-safety-checker"
-safety_feature_extractor = AutoFeatureExtractor.from_pretrained(safety_model_id)
-safety_checker = StableDiffusionSafetyChecker.from_pretrained(safety_model_id)
-
+# load safety model（禁用：离线环境下不加载，避免联网失败）
+#safety_model_id = "CompVis/stable-diffusion-safety-checker"
+#safety_feature_extractor = AutoFeatureExtractor.from_pretrained(safety_model_id)
+#safety_checker = StableDiffusionSafetyChecker.from_pretrained(safety_model_id)
+safety_model_id = None
+safety_feature_extractor = None
+safety_checker = None
 #set cuda device 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
