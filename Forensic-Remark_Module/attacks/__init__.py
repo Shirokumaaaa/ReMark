@@ -3,3 +3,5 @@ from . import stargan   # registers StarGANAttack
 from . import simswap   # registers SimSwapAttack
 from . import arc2face  # registers Arc2FaceAttack
 from . import diffswap  # registers DiffSwapAttack
+from . import face_adapter  # registers FaceAdapterAttack
+from . import reface  # registers REFaceAttack

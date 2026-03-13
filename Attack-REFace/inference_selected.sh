@@ -1,19 +1,19 @@
 
 # Set variables
-name="Swap_outs"
-Results_dir="examples/FaceSwap/${name}/results"
-Base_dir="examples/FaceSwap/${name}/Outs"
-Results_out="examples/FaceSwap/${name}/results/results" 
+name="faceswap_outputs"
+Results_dir="data/${name}/results"
+Base_dir="data/${name}/Outs"
+Results_out="data/${name}/results/results" 
 device=0
 
 
 CONFIG="models/REFace/configs/project_ffhq.yaml"
-CKPT="models/REFace/checkpoints/saved.ckpt"
+CKPT="models/REFace/checkpoints/last.ckpt"
 
 
 #change this
-target_path="examples/FaceSwap/Target"  
-source_path="examples/FaceSwap/Source"
+target_path="data/faceswap_inputs/target"
+source_path="data/faceswap_inputs/source"
 
 
 

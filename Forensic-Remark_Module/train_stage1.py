@@ -132,14 +132,15 @@ class Trainer:
         # CUDA_VISIBLE_DEVICES 已由 torchrun 设置，StarGAN 的 DataParallel
         # 只会看到当前进程的那张卡，不再与 DDP 冲突
         self.online_attacks = {}
-        for name in getattr(cfg.attacks, 'online', []):
+        attack_names = list(getattr(cfg.attacks, 'online', [])) + list(getattr(cfg.attacks, 'offline', []))
+        for name in attack_names:
             if name not in ATTACK_REGISTRY:
                 if self.main:
                     logger.warning(f'Attack "{name}" not registered, skipping.')
                 continue
             self.online_attacks[name] = build_attack(name, cfg)
             if self.main:
-                logger.info(f'Online attack loaded: {name}')
+                logger.info(f'Attack loaded: {name}')
 
         # 损失
         self.loss_computer = LossComputer(

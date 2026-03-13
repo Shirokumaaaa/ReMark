@@ -55,14 +55,51 @@ python infer.py -s ./example/src -t ./example/tgt -o ./output -ckpt ./checkpoint
 
 ## 4) 协作者/Agent 快速上手流程
 
+**若你只关心“如何直接推理”，可以只看下面 1~5 步，照抄命令即可。**
+
 1. **读文档顺序**：先读本文件（`README_COLLAB.md`）了解分支与注意点，再读 **download-README.md** 完成环境与模型下载。
 2. **环境**：按 download-README 创建 conda 环境（如 `FaceAdapter`）、安装 PyTorch 与 `requirements.txt`，且在本目录下执行 pip。
 3. **权重**：运行一次 `infer.py` 或从 Hugging Face 将 Face-Adapter 与 SD/VAE 放到 `./checkpoints`（或按 download-README 指定位置）。
-4. **跑通测试**：使用自带 example 或从 Dataset-CelebA_HQ 准备两目录，执行：
+4. **跑通测试（本地 example）**：使用自带 example，执行：
    ```bash
-   python infer.py -s <源脸目录> -t <目标脸目录> -o ./output -ckpt ./checkpoints
+   cd Attack-Face-Adapter
+   python infer.py -s ./example/src -t ./example/tgt -o ./output_example -ckpt ./checkpoints
    ```
-5. **输出**：换脸图在 `-o` 目录下的 `swap/`，对比图在 `concat/`。
+   其中：
+   - `-s/--source`：源脸目录（identity 来源）
+   - `-t/--target`：目标脸目录（表情/姿态/背景来源）
+   - `-o/--output`：输出根目录
+   - `-ckpt/--checkpoint`：权重与缓存目录
+5. **使用 Dataset-CelebA_HQ 快速构建源/目标目录（推荐，一键预处理 + 推理）**：
+   - 本目录提供辅助脚本 `tools/prepare_celebahq_eval_inputs.py`，会从 `../Dataset-CelebA_HQ/<split>` 中选择若干张图片，并在本目录下创建**只包含软链接的视图目录**：
+     - 输入数据集根：`../Dataset-CelebA_HQ`（可用 `--dataset-root` 覆盖）
+     - 输出视图目录：`./data/face_adapter_inputs/source`、`./data/face_adapter_inputs/target`
+   - 典型用法（Linux 服务器，一次准备 + 多次复用）：
+     ```bash
+     cd Attack-Face-Adapter
+     # 从 Dataset-CelebA_HQ/test 中抽取 8 张源脸、256 张目标脸
+     python tools/prepare_celebahq_eval_inputs.py \
+       --source-split test --target-split test \
+       --num-source 8 --num-target 256
+
+    # 运行前要添加这个，不然会显示缺失nvrtc动态库
+    export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
+
+     # 使用生成的视图目录跑 Face-Adapter 推理
+     python infer.py \
+       -s ./data/face_adapter_inputs/source \
+       -t ./data/face_adapter_inputs/target \
+       -o ./output_celebahq \
+       -ckpt ./checkpoints
+     ```
+   - 脚本行为说明（预处理 & 推理习惯用法）：
+     - **不会修改 `Dataset-CelebA_HQ` 原始文件**，只在 `data/face_adapter_inputs` 下创建/更新指向原图的软链接。
+     - 同时在 `./data/celebahq_eval/source.csv`、`./data/celebahq_eval/target.csv` 记录所选图片路径，便于复现实验。
+     - 可通过 `--source-split/--target-split`（`train/val/test`）与 `--num-source/--num-target` 控制评测子集大小；Face-Adapter 实际推理对数约为 `num_source × num_target`。
+6. **输出位置**：
+   - 换脸图：`-o` 目录下的 `swap/`（例如 `./output_celebahq/swap/`）
+   - 驱动/reenactment 图：`-o` 目录下的 `drive/`
+   - 对比拼接图：`-o` 目录下的 `concat/`（源脸、目标脸、驱动结果、swap 结果并排）
 
 ---
 

@@ -125,7 +125,7 @@ class IDLoss(nn.Module):
         # breakpoint()
         if clip_img:
             x = un_norm_clip(x)
-            x = TFF.normalize(x, mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+            # x = TFF.normalize(x, mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
         x = self.face_pool_1(x)  if x.shape[2]!=256 else  x # (1) resize to 256 if needed
         x = x[:, :, 35:223, 32:220]  # (2) Crop interesting region
         x = self.face_pool_2(x) # (3) resize to 112 to fit pre-trained model

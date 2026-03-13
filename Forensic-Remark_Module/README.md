@@ -90,6 +90,8 @@ Forensic-Remark_Module/
 │   ├── base.py                     # 抽象基类，定义统一接口
 │   ├── stargan.py                  # StarGAN 封装
 │   ├── simswap.py                  # SimSwap 封装（已接入）
+│   ├── face_adapter.py             # Face-Adapter 离线 replay 封装（待接入）
+│   ├── reface.py                   # REFace 离线 replay 封装（待接入）
 │   └── registry.py                 # 名称 → 类的注册表
 │
 ├── wm_adapters/                    # 水印编解码器适配层
@@ -154,10 +156,12 @@ class BaseAttack:
 
 **在线 vs 离线策略**：
 - GAN 类（StarGAN、SimSwap、GANimation）：在线生成，接入 DataLoader worker
-- 扩散类（DiffSwap、Arc2Face）：推理慢，通过 `tools/gen_pairs_*.py` 离线生成配对 CSV，训练时读 CSV，接口与在线模型一致
+- 扩散类/大模型换脸（DiffSwap、Arc2Face、Face-Adapter、REFace）：推理慢，优先通过 `tools/gen_pairs_*.py` 或独立脚本**离线生成配对 CSV/目录产物**，训练时读 CSV，接口与在线模型一致
 
 **命名与后端绑定约定（强制）**：
 - `Arc2Face`（或 `arc2face`）明确绑定 Arc2Face wrapper 产物路径（`Attack-arc2face_wrapper/outputs`）。
+- `FaceAdapter`（或 `face_adapter`）明确绑定 `Attack-Face-Adapter/` 的推理产物（建议在该目录下统一输出到 `output_*`，并由 ReMark 的离线生成脚本收集为 CSV）。
+- `REFace`（或 `reface`）明确绑定 `Attack-REFace/` 的推理产物（默认脚本输出在 `data/faceswap_outputs/...` 或 `examples/FaceSwap/...`，并由 ReMark 的离线生成脚本收集为 CSV）。
 - 若 `source_mode=random_pool` 但 source 目录为空，默认直接报错；不会再静默退回 `cover_roll`。
 - 任何“名称与后端不匹配”的替换都必须先确认，不允许自动替换为其他模型。
 
@@ -240,7 +244,7 @@ losses:
 
 attacks:
   online:  [stargan]
-  offline: [diffswap]         # 读离线生成的 CSV
+  offline: [diffswap, arc2face, face_adapter, reface]  # 读离线生成的 CSV
 
 efficiency:
   cache_wm_images: true
@@ -328,6 +332,8 @@ Forensic-TAG-WM/            ← 防御侧：TAG-WM
     ↑ wm_adapters/ 接入
 Forensic-Remark_Module/     ← 本模块：即插即用水印修复
     ↑ attacks/ 接入
+Attack-Face-Adapter/        ← 攻击侧（扩散换脸，目录输入，离线优先）
+Attack-REFace/              ← 攻击侧（扩散换脸，脚本封装，离线优先）
 Attack-DiffSwap/            ← 攻击侧（慢速，离线使用）
 Attack-arc2face_wrapper/    ← 攻击侧（慢速，离线使用）
 ```
