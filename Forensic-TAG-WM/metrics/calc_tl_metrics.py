@@ -1,6 +1,16 @@
 import torch
 from sklearn.metrics import roc_auc_score
 
+
+def _safe_auc(gt_np, pr_np, pr_labels=None):
+    unique = set(gt_np.tolist())
+    if len(unique) < 2:
+        if pr_labels is None:
+            pr_labels = (pr_np > 0.5).astype(gt_np.dtype)
+        return 1.0 if (pr_labels == gt_np).all() else 0.5
+    return roc_auc_score(gt_np, pr_np)
+
+
 def calc_metrics(ground_truth, pred):
     """
     Calculate various metrics for each sample in the batch, including Accuracy, F1-score, Precision, Sensitivity, Specificity, Recall, AUC, IoU, and Dice coefficient.
@@ -47,7 +57,7 @@ def calc_metrics(ground_truth, pred):
     # Calculate AUC
     gt_np = gt.cpu().numpy()
     pr_np = pr.cpu().numpy()
-    auc = roc_auc_score(gt_np, pr_np)
+    auc = _safe_auc(gt_np, pr_np, pr_labels.cpu().numpy())
     
     # Accumulate metrics
     total_accuracy += accuracy
@@ -121,7 +131,7 @@ def calc_batch_metrics(ground_truth, pred):
         # Calculate AUC
         gt_np = gt.cpu().numpy()
         pr_np = pr.cpu().numpy()
-        auc = roc_auc_score(gt_np, pr_np)
+        auc = _safe_auc(gt_np, pr_np, pr_labels.cpu().numpy())
         
         # Accumulate metrics
         total_accuracy += accuracy

@@ -67,14 +67,26 @@ def define_result_dict(configs, ret_type):
 
 def load_run_config():
     configs = JsonConfig()
-    configs.load_json_file('./configurations/run.json')
+    configs.load_json_file(os.environ.get('LAMPMARK_RUN_CONFIG', './configurations/run.json'))
     return configs
+
+
+def _config_path(default_name: str, env_name: str) -> str:
+    return os.environ.get(env_name, f'./configurations/{default_name}')
 
 
 def train_common():
     configs = JsonConfig()
-    configs.load_json_file('./configurations/pretrain.json')
+    configs.load_json_file(_config_path('pretrain.json', 'LAMPMARK_PRETRAIN_CONFIG'))
     trainer = TrainerImg(configs, device)
+
+    if getattr(configs, 'pretrain_model_path', None):
+        if getattr(configs, 'sep_model', False):
+            trainer.load_model_integral(configs.pretrain_model_path)
+        else:
+            trainer.load_model_common(configs.pretrain_model_path)
+    if getattr(configs, 'pretrain_discriminator_path', None):
+        trainer.load_discriminator(configs.pretrain_discriminator_path)
 
     train_loader = make_loader(configs, model_mode='train', shuffle=True)
     val_loader = make_loader(configs, model_mode='val', shuffle=False)
@@ -110,7 +122,7 @@ def train_common():
         encoder_path = configs.weight_path + '/wm-img/encoder_epoch_' + str(epoch + 1) + '.pth'
         decoder_path = configs.weight_path + '/wm-img/decoder_epoch_' + str(epoch + 1) + '.pth'
         discriminator_path = configs.weight_path + '/discriminator/epoch_' + str(epoch + 1) + '.pth'
-        # trainer.save_model(encoder_path, decoder_path, discriminator_path)
+        trainer.save_model(encoder_path, decoder_path, discriminator_path)
         model_path = configs.weight_path + '/wm-img/model_epoch_' + str(epoch + 1) + '.pth'
         trainer.save_model_integral(model_path, discriminator_path)
 
@@ -148,7 +160,7 @@ def train_common():
 
 def tune_deepfake():
     configs = JsonConfig()
-    configs.load_json_file('./configurations/tune_deepfake.json')
+    configs.load_json_file(_config_path('tune_deepfake.json', 'LAMPMARK_TUNE_CONFIG'))
     trainer = TrainerImg(configs, device)
 
     if getattr(configs, 'pretrain_model_path', None):
@@ -240,7 +252,7 @@ def tune_deepfake():
 
 def test_simswap():
     configs = JsonConfig()
-    configs.load_json_file('./configurations/test_deepfake.json')
+    configs.load_json_file(_config_path('test_deepfake.json', 'LAMPMARK_TEST_CONFIG'))
     tester = TesterImg(configs, device)
 
     if getattr(configs, 'encoder_path', None) and getattr(configs, 'decoder_path', None):

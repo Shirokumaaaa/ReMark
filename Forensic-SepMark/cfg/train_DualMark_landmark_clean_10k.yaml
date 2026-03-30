@@ -1,0 +1,22 @@
+project_name: Dual_watermark_landmark_clean_10k
+epoch_number: 20
+batch_size: 16
+lr: 0.0002
+beta1: 0.5
+image_size: 256
+message_length: 128
+message_range: 0.1
+attention_encoder: se
+attention_decoder: se
+weight:
+  - 1
+  - 10
+  - 10
+  - 10
+  - 0.1
+dataset_path: /mnt/personal_workspace/chenkeyu/ReMark/Dataset-CelebA_HQ_10k_landmark_clean_20260324
+save_images_number: 8
+noise_layers:
+  pool_R:
+    - Identity()
+  pool_F: []

@@ -40,7 +40,7 @@ class FINAdapter(BaseWMAdapter):
             getattr(cfg, 'wm_adapter_ckpts', None), 'fin',
             os.path.join(self._fin_root, 'experiments', 'celeba_hq_128', 'FED.pt')
         )
-        self._message_length = 64
+        self._message_length = 128
         super().__init__(cfg)
 
     @property

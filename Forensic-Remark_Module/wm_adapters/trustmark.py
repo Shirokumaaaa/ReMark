@@ -22,6 +22,9 @@ def _get_nested_attr(obj, name: str, default=None):
 
 
 @register_wm("trustmark")
+@register_wm("trustmask")
+@register_wm("TrustMark")
+@register_wm("TrustMask")
 class TrustMarkAdapter(BaseWMAdapter):
     """
     TrustMark(Q) 适配器。
@@ -54,7 +57,7 @@ class TrustMarkAdapter(BaseWMAdapter):
         )
         py_root_default = _TRUSTMARK_PY_ROOT
         self._python_root = str(_get_nested_attr(tm_cfg, "python_root", py_root_default))
-        self._message_length = 100
+        self._message_length = 128
         self._wm_strength = float(_get_nested_attr(tm_cfg, "wm_strength", 1.0))
         super().__init__(cfg)
 

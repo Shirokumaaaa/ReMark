@@ -158,4 +158,3 @@ class FaceEmbedder(nn.Module):
             params += list(self.organ_attention.parameters())
             params += list(self.organ_norm.parameters())
         return params
-

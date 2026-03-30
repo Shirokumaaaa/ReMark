@@ -373,14 +373,25 @@ class TrainerImg:
         os.makedirs(os.path.dirname(encoder_path), exist_ok=True)
         os.makedirs(os.path.dirname(decoder_path), exist_ok=True)
         os.makedirs(os.path.dirname(discriminator_path), exist_ok=True)
-        if self.num_gpus > 1:
-            torch.save(self.encoder.module.state_dict(), encoder_path)
-            torch.save(self.decoder.module.state_dict(), decoder_path)
-            torch.save(self.discriminator.module.state_dict(), discriminator_path)
+        if self.configs.sep_model:
+            if self.num_gpus > 1:
+                encoder_state = self.encoder.module.state_dict()
+                decoder_state = self.decoder.module.state_dict()
+                discriminator_state = self.discriminator.module.state_dict()
+            else:
+                encoder_state = self.encoder.state_dict()
+                decoder_state = self.decoder.state_dict()
+                discriminator_state = self.discriminator.state_dict()
         else:
-            torch.save(self.encoder.state_dict(), encoder_path)
-            torch.save(self.decoder.state_dict(), decoder_path)
-            torch.save(self.discriminator.state_dict(), discriminator_path)
+            model_ref = self.model.module if self.num_gpus > 1 else self.model
+            discriminator_state = (
+                self.discriminator.module.state_dict() if self.num_gpus > 1 else self.discriminator.state_dict()
+            )
+            encoder_state = model_ref.encoder.state_dict()
+            decoder_state = model_ref.decoder.state_dict()
+        torch.save(encoder_state, encoder_path)
+        torch.save(decoder_state, decoder_path)
+        torch.save(discriminator_state, discriminator_path)
 
     def save_model_integral(self, model_path, discriminator_path):
         os.makedirs(os.path.dirname(model_path), exist_ok=True)
@@ -415,6 +426,14 @@ class TrainerImg:
             self.encoder.load_state_dict(enc_dict)
             self.decoder.load_state_dict(dec_dict)
         print('Finished loading weights from', model_path)
+
+    def load_model_common(self, model_path):
+        model_dict = torch.load(model_path)
+        if self.num_gpus > 1 and self.device != 'cpu':
+            self.model.module.load_state_dict(model_dict)
+        else:
+            self.model.load_state_dict(model_dict)
+        print('Finished loading common model weights from', model_path)
 
     def load_discriminator(self, discriminator_path):
         if self.num_gpus > 1 and self.device != 'cpu':

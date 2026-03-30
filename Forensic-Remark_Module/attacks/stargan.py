@@ -260,3 +260,18 @@ class StarGANAttack(BaseAttack):
                 f"[StarGANAttack] 检测到可能的静默失败：输入输出平均差值 {diff:.4f} < 0.01，"
                 f"StarGAN 可能未真正变换图像（人脸检测失败？）"
             )
+
+
+@register_attack('stargan_fixed')
+class StarGANFixedDomainAttack(StarGANAttack):
+    """
+    固定目标域版本：
+      - 不随机采样目标域
+      - 始终使用 attack_options.stargan_fixed_domain（默认 1）
+    """
+
+    def __init__(self, cfg):
+        super().__init__(cfg)
+        self.random_domain = False
+        self.fixed_domain = int(getattr(getattr(cfg, 'attack_options', None),
+                                        'stargan_fixed_domain', 1))

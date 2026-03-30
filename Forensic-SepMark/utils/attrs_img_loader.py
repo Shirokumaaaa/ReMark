@@ -79,7 +79,7 @@ class attrsImgDataset(Dataset):
         image_path, label = self.list[index]
         image = Image.open(image_path).convert("RGB")
         if image is not None:
-            return self.transform(image), torch.FloatTensor(label)
+            return self.transform(image), torch.FloatTensor(label), image_path
 
     def __len__(self):
         return len(self.list)

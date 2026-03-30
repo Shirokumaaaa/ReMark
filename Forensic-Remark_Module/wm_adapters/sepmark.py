@@ -56,6 +56,12 @@ class SepMarkAdapter(BaseWMAdapter):
         self._attention_encoder = _get_nested_attr(sep_cfg, "attention_encoder", "se")
         self._attention_decoder = _get_nested_attr(sep_cfg, "attention_decoder", "se")
         self._decoder_head = str(_get_nested_attr(sep_cfg, "decoder_head", "c")).lower()
+        self._decode_logits_mode = str(
+            _get_nested_attr(sep_cfg, "decode_logits_mode", "legacy_clamped_logit")
+        ).lower()
+        self._decode_logits_scale = float(
+            _get_nested_attr(sep_cfg, "decode_logits_scale", 1.0)
+        )
         self._ckpt_path = _get_nested_attr(
             sep_cfg, "ckpt",
             _get_nested_attr(
@@ -184,10 +190,17 @@ class SepMarkAdapter(BaseWMAdapter):
         self._decoder.to(device)
         pred = self._decoder(images)
 
-        # SepMark 输出是连续实值消息（阈值 0 判 bit），转换为 BCE 可用 logits：
-        # y in [-r, r] -> p in [0,1] -> logit(p)
+        # SepMark 输出是连续实值消息（阈值 0 判 bit），转换为 BCE 可用 logits。
+        # legacy_clamped_logit: 兼容历史映射（含 clamp，可能产生饱和区）
+        # smooth_linear:        直接线性映射为 logits，避免硬裁剪死区
         eps = 1e-6
         r = max(self._message_range, eps)
-        p = ((pred / r) + 1.0) * 0.5
-        p = p.clamp(eps, 1.0 - eps)
-        return torch.logit(p)
+        mode = self._decode_logits_mode
+        if mode in ("legacy", "clamped_logit", "legacy_clamped_logit"):
+            p = ((pred / r) + 1.0) * 0.5
+            p = p.clamp(eps, 1.0 - eps)
+            return torch.logit(p)
+
+        # smooth_linear / linear / direct
+        scale = max(self._decode_logits_scale, eps)
+        return (pred / r) * scale

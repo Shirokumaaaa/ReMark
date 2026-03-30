@@ -21,6 +21,8 @@ def _get_nested_attr(obj, name: str, default=None):
 
 
 @register_wm("maskwm")
+@register_wm("MaskWM")
+@register_wm("mask_wm")
 class MaskWMAdapter(BaseWMAdapter):
     """
     MaskWM 水印适配器。
@@ -41,7 +43,7 @@ class MaskWMAdapter(BaseWMAdapter):
             mcfg, "root",
             _get_nested_attr(paths_cfg, "maskwm", _MASKWM_ROOT),
         )
-        self._model_name = str(_get_nested_attr(mcfg, "model_name", "D_32bits"))
+        self._model_name = str(_get_nested_attr(mcfg, "model_name", "D_128bits"))
         self._blue = bool(_get_nested_attr(mcfg, "blue", True))
         self._use_jnd = bool(_get_nested_attr(mcfg, "use_jnd", True))
         self._jnd_factor = float(_get_nested_attr(

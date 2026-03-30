@@ -1,3 +1,4 @@
+import argparse
 import dlib
 import matplotlib.pyplot as plt
 import matplotlib
@@ -9,6 +10,8 @@ import torch
 import re
 import copy
 import time
+import subprocess
+import sys
 import numpy as np
 import scipy
 import random
@@ -22,6 +25,13 @@ from skimage import io
 from imutils import face_utils
 from torchvision import transforms
 from einops import rearrange
+
+
+def _run_cmd(cmd, cwd=None, extra_env=None):
+    env = os.environ.copy()
+    if extra_env:
+        env.update(extra_env)
+    subprocess.run(cmd, cwd=cwd, env=env, check=True)
 
 def jpg2png(jpg_path = 'data/portrait_jpg', png_path = 'data/portrait'):
     for type in ['source', 'target']:
@@ -400,6 +410,10 @@ def paste(data_root = 'data/portrait/swap_res_repair', dst_dir = 'data/portrait/
 
             
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--tgt_scale', type=float, default=0.01)
+    args = parser.parse_args()
+
     jpg2png() 
     
     get_lmk_ori()
@@ -409,13 +423,24 @@ if __name__ == '__main__':
     
     # face feature
     print('running face detection')
-    os.system('bash data_preprocessing/detection/run_detect_faces_portrait.sh')
+    _run_cmd(
+        ['bash', 'data_preprocessing/detection/run_detect_faces_portrait.sh'],
+        extra_env={'DIFFSWAP_PYTHON': sys.executable},
+    )
     print('running mtcnn')
-    os.system('python data_preprocessing/detection/merge_mtcnn_portrait.py')
+    _run_cmd([sys.executable, 'data_preprocessing/detection/merge_mtcnn_portrait.py'])
     print('obtain the parameters of affine transformation')
-    os.system('python -m data_preprocessing.align.face_align_portrait')
+    _run_cmd([sys.executable, '-m', 'data_preprocessing.align.face_align_portrait'])
     
     save_mask()
-    os.system('CUDA_VISIBLE_DEVICES=0 bash tests/face_swap.sh')
+    tgt_scale_env = str(args.tgt_scale)
+    _run_cmd(
+        ['bash', 'tests/face_swap.sh'],
+        extra_env={
+            'CUDA_VISIBLE_DEVICES': os.environ.get('CUDA_VISIBLE_DEVICES', '0'),
+            'DIFFSWAP_PYTHON': sys.executable,
+            'DIFFSWAP_TGT_SCALE': tgt_scale_env,
+        },
+    )
     repair_by_mask()
     paste()

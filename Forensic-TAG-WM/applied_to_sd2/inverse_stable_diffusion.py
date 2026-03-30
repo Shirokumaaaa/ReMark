@@ -42,18 +42,21 @@ class InversableStableDiffusionPipeline(ModifiedStableDiffusionPipeline):
         scheduler,
         safety_checker,
         feature_extractor,
+        image_encoder=None,
         requires_safety_checker: bool = False,
         
     ):
 
-        super(InversableStableDiffusionPipeline, self).__init__(vae,
+        super(InversableStableDiffusionPipeline, self).__init__(
+                vae,
                 text_encoder,
                 tokenizer,
                 unet,
                 scheduler,
                 safety_checker,
                 feature_extractor,
-                requires_safety_checker)
+                image_encoder=image_encoder,
+                requires_safety_checker=requires_safety_checker)
 
         self.forward_diffusion = partial(self.backward_diffusion, reverse_process=True)
         self.count = 0

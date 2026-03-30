@@ -32,6 +32,7 @@ RunLogger — 训练日志管理器
 
 import logging
 import os
+import tempfile
 import shutil
 import sys
 from datetime import datetime
@@ -68,7 +69,7 @@ class RunLogger:
                 )
         else:
             # 秒级时间戳，避免同一分钟内多次启动 run 目录冲突
-            ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+            ts = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
             self.run_dir = os.path.join(runs_root, f'{stage}_{ts}')
 
         self.sample_dir = os.path.join(self.run_dir, 'samples')
@@ -163,7 +164,7 @@ class RunLogger:
         grid = torch.cat(rows, dim=0)
 
         path = os.path.join(self.sample_dir, f'epoch_{epoch:03d}.png')
-        save_image(grid, path, nrow=nrow)
+        _atomic_save_image(grid, path, nrow=nrow)
         self.info(f'Sample → {os.path.relpath(path, self.run_dir)}')
 
     # ── Checkpoint 路径 ───────────────────────────────────────────────────────
@@ -217,3 +218,19 @@ def _ns_to_dict(obj):
     if isinstance(obj, list):
         return [_ns_to_dict(i) for i in obj]
     return obj
+
+
+def _atomic_save_image(tensor, final_path: str, nrow: int):
+    """
+    原子写图，避免 VSCode/文件浏览器在写入中途读取到半文件导致“图片加载失败”。
+    """
+    out_dir = os.path.dirname(final_path) or "."
+    os.makedirs(out_dir, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(prefix=".tmp_img_", suffix=".png", dir=out_dir)
+    os.close(fd)
+    try:
+        save_image(tensor, tmp_path, nrow=nrow)
+        os.replace(tmp_path, final_path)
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)

@@ -5,7 +5,7 @@ model:
 
 training:
   epochs: 100
-  batch_size: 64             # per GPU，4× RTX 4090 (24GB)
+  batch_size: 16             # per GPU，4× RTX 4090 (24GB)
   lr: 2.0e-4
   betas: [0.9, 0.999]
   weight_decay: 1.0e-4
@@ -33,30 +33,82 @@ efficiency:
   cache_wm_images: false
   use_amp: false
   wm_loss_freq: 1
-  attack_num_workers: 0
+  attack_num_workers: 4
 
-wm_model: sepmark
-wm_adapter_sepmark:
-  image_size: 256
-  message_length: 128
-  message_range: 0.1
-  attention_encoder: se
-  attention_decoder: se
-  decoder_head: c   # c 或 rf
+wm_model: maskwm
+  
+#wm_adapter_sepmark:
+  # image_size: 256
+  # message_length: 128
+  # message_range: 0.1
+  # attention_encoder: se
+  # attention_decoder: se
+  # decoder_head: c   # c 或 rf
   # 可选：自定义 SepMark 根目录/权重
   # root: /abs/path/to/Forensic-SepMark
   # ckpt: /abs/path/to/EC_xx.pth
 
 attacks:
-  online:  [stargan]
+  online:  [stargan2]
   offline: []
+
+attack_options:
+  enforce_nontrivial_swap: true
+  nontrivial_swap_eps: 1.0e-4
+  stargan2_ckpt: "/mnt/personal_workspace/chenkeyu/ReMark/Attack-StarGAN/modelckpt/200000-G.ckpt"
+  stargan2_image_size: 256
+  stargan2_selected_attrs: [Black_Hair, Blond_Hair, Brown_Hair, Male, Young]
+  stargan2_hair_exclusive: false
+
+  # Arc2Face unified preset
+  arc2face_mode: replay
+  arc2face_min_unique_output_ratio: 0.0
+  arc2face_results_jsonl: /mnt/personal_workspace/chenkeyu/ReMark/Attack-arc2face_wrapper/outputs_replay_large/generation_results.jsonl
+  arc2face_outputs_base: /mnt/personal_workspace/chenkeyu/ReMark/Attack-arc2face_wrapper
+  arc2face_replay_key: source_image
+  arc2face_allow_missing: false
+  arc2face_blend_alpha: 0.89
+
+  # DiffSwap unified preset
+  diffswap_mode: online
+  diffswap_online_fallback_replay: false
+  diffswap_online_python_bin: /home/ldy/miniconda3/envs/DiffSwap/bin/python
+  diffswap_online_repo_root: /mnt/personal_workspace/chenkeyu/ReMark/Attack-DiffSwap
+  diffswap_online_pipeline_script: /mnt/personal_workspace/chenkeyu/ReMark/Attack-DiffSwap/pipeline.py
+  diffswap_online_timeout_sec: 900
+  diffswap_blend_alpha: 0.85
+
+  # ReFace unified preset
+  reface_mode: online
+  reface_online_fallback_replay: false
+  reface_python_bin: /home/ldy/miniconda3/envs/REFace/bin/python
+  reface_online_ddim_steps: 6
+  reface_online_scale: 2.0
+  reface_online_timeout_sec: 300
+  reface_blend_alpha: 0.95
+
+  # Face-Adapter unified preset
+  face_adapter_mode: online
+  face_adapter_online_fallback_replay: false
+  face_adapter_python_bin: /home/ldy/miniconda3/envs/FaceAdapter/bin/python
+  face_adapter_online_hf_cache: /home/ldy/.cache/huggingface/hub
+  face_adapter_online_local_files_only: true
+  face_adapter_online_timeout_sec: 300
+  face_adapter_online_compose_to_original: true
+  face_adapter_online_num_inference_steps: 12
+  face_adapter_online_guidance_scale: 3.5
+  face_adapter_online_crop_ratio: 0.81
+  face_adapter_blend_alpha: 0.92
 
 
 data:
-  train_csv: data_manifests/celeba_hq_128_train_10k.csv
-  val_csv: data_manifests/celeba_hq_128_val.csv
-  image_size: 128
+  # train_csv: data_manifests/celeba_hq_128_train_10k.csv
+  # val_csv: data_manifests/celeba_hq_128_val.csv
+  train_csv: data_manifests/ffhq_10k_train_with_attrs.csv
+  val_csv:   data_manifests/ffhq_10k_val_with_attrs.csv
 
+
+  image_size: 128
 paths:
   runs_dir: runs
 

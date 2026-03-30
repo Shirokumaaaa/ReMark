@@ -88,6 +88,67 @@ class LossComputer:
         ratio = min(1.0, self.current_epoch / self.warmup_epochs)
         return base_weight * ratio
 
+    @staticmethod
+    def _linear_interp(epoch: int, start_epoch: int, end_epoch: int, start_v: float, end_v: float) -> float:
+        if end_epoch <= start_epoch:
+            return end_v if epoch >= start_epoch else start_v
+        if epoch <= start_epoch:
+            return start_v
+        if epoch >= end_epoch:
+            return end_v
+        ratio = float(epoch - start_epoch) / float(end_epoch - start_epoch)
+        return start_v + (end_v - start_v) * ratio
+
+    def _scheduled_weight(self, name: str, loss_cfg) -> float:
+        """
+        统一损失权重调度（向后兼容）：
+        - 默认使用 loss_cfg.weight
+        - kl + warmup: 沿用历史 KL warm-up 逻辑
+        - 可选 schedule:
+            losses.<name>.schedule:
+              enabled: true
+              start_epoch: 0
+              end_epoch: 40   # 或者 ramp_epochs
+              start_weight: <float>  # 默认取当前 weight
+              end_weight:   <float>  # 默认取 target_weight 或当前 weight
+        """
+        base_weight = float(getattr(loss_cfg, 'weight', 1.0))
+        if name == 'kl' and getattr(loss_cfg, 'warmup', False):
+            base_weight = self._kl_weight(base_weight)
+
+        schedule = getattr(loss_cfg, 'schedule', None)
+        if schedule is None or not bool(getattr(schedule, 'enabled', False)):
+            return base_weight
+
+        start_epoch = int(getattr(schedule, 'start_epoch', 0))
+        if hasattr(schedule, 'end_epoch'):
+            end_epoch = int(getattr(schedule, 'end_epoch'))
+        else:
+            ramp_epochs = int(getattr(schedule, 'ramp_epochs', 0))
+            end_epoch = start_epoch + ramp_epochs
+
+        start_weight = float(getattr(schedule, 'start_weight', base_weight))
+        end_weight = float(
+            getattr(
+                schedule,
+                'end_weight',
+                getattr(schedule, 'target_weight', base_weight),
+            )
+        )
+        return self._linear_interp(
+            epoch=self.current_epoch,
+            start_epoch=start_epoch,
+            end_epoch=end_epoch,
+            start_v=start_weight,
+            end_v=end_weight,
+        )
+
+    def get_effective_weight(self, name: str) -> float:
+        loss_cfg = getattr(self.cfg, name, None)
+        if loss_cfg is None:
+            return 0.0
+        return self._scheduled_weight(name, loss_cfg)
+
     def compute(self, **kwargs) -> tuple:
         """
         Args:
@@ -106,9 +167,7 @@ class LossComputer:
             if not enabled:
                 continue
 
-            weight = getattr(loss_cfg, 'weight', 1.0)
-            if name == 'kl' and getattr(loss_cfg, 'warmup', False):
-                weight = self._kl_weight(weight)
+            weight = self._scheduled_weight(name, loss_cfg)
 
             if name not in LOSS_REGISTRY:
                 raise KeyError(f"未注册的损失函数：'{name}'，可用：{list(LOSS_REGISTRY.keys())}")

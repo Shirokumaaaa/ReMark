@@ -1,36 +1,172 @@
+# Stage 2 U-Net 训练配置
+# 依赖：paths.stage1_checkpoint 必须指向 Stage 1 的 best.pth
+#       Stage 1 版本变更后必须重新训练 Stage 2（见 README §4.2 耦合约束）
+
 model:
-  in_channels: 4
-  base_channels: 64
+  # latent_channels 从 Stage 1 checkpoint 的 config.yaml 自动读取，无需手动填写
+  base_channels: 64      # U-Net 内部第一级通道数
+  n_levels: 2            # 下采样层数（16×16 latent → 4×4 bottleneck）
+  n_res: 2               # 每级残差块数
+  time_cond: false       # 是否启用 timestep 条件
+  time_embed_dim: 256    # timestep embedding 维度（time_cond=true 时生效）
+  use_scale_shift_norm: false # diffusion-style scale-shift norm（需 time_cond=true 更有效）
+  dropout: 0.0                # ResBlock dropout
+  latent_size: 16             # Stage1 latent 空间分辨率（128 输入 + ds=8 时为 16）
+  use_level_attn: false       # 是否在多尺度层启用 attention（非仅 bottleneck）
+  attention_resolutions: [4, 2] # 按 latent 分辨率启用 attention
+  use_bottleneck_attn: false  # 兼容旧开关：true 时默认 mid_attn_depth>=1
+  mid_attn_depth: 0           # bottleneck attention+ffn 堆叠层数
+  attn_heads: 4               # 注意力头数（需整除对应通道）
+  ffn_mult: 2                 # attention 后 FFN 扩展倍率
 
 training:
-  epochs: 200
-  batch_size: 16
-  lr: 1.0e-5
+  epochs: 20
+  batch_size: 8
+  lr: 2.0e-4
   betas: [0.9, 0.999]
+  supervision_mode: image  # latent | image | hybrid；当前推荐 image
+  reference_sensitivity_log: true
+  unet_prediction_mode: delta
+  unet_output_blend: 1.0  # z_out = z + blend*(unet(z)-z)，<1 可抑制过冲
+  delta_scale: 0.08
+  per_step_update: true    # 每一步单独 forward/backward/step（immediate update）
+  separate_bce_step: false # 早期默认关闭，rollout 稳定后再按需打开
+  bce_only_step_scale: 0.4
+  bptt_rollout: false
+  teacher_forcing_warmup_epochs: 30
+  teacher_forcing_start_prob: 1.0
+  teacher_forcing_end_prob: 0.1
   save_freq: 10
   val_freq: 1
-  max_infer_steps: 10            # 推理时最大迭代步数
+  max_infer_steps: 10
+  three_phase:
+    enabled: false
+    phase1_min_epochs: 8
+    phase1_max_epochs: 24
+    phase2_epochs: 96
+    phase1_n_steps: 5
+    phase2_n_steps: 8
+    phase3_n_steps: 10
+    phase2_tf_end_prob: 0.2
+    phase3_lr_scale: 0.3
+    phase1_l1_weight: 1.0
+    phase1_bce_weight: 0.5
+    phase2_l1_weight: 1.0
+    phase2_bce_weight: 1.0
+    phase3_l1_weight: 1.0
+    phase3_bce_weight: 1.5
+    phase1_disable_aux_losses: false
+    phase2_progress_weight: 0.7
+    phase2_terminal_anchor_weight: 0.1
+    phase3_progress_weight: 0.7
+    phase3_terminal_anchor_weight: 0.1
+    phase3_tail_enabled: true
+    phase3_tail_last_k: 3
+    phase3_tail_weight: 2.5
+    phase1_gate_enabled: true
+    phase1_target_uplift_step: 5
+    phase1_target_uplift: 0.005
+  dynamic_controller:
+    enabled: false
+    phase1_n_steps: 2
+    phase2_n_steps: 3
+    phase3_n_steps: 5
+    phase1_bce_weight: 0.5
+    phase2_bce_weight: 1.0
+    phase3_bce_weight: 1.5
+    phase1_terminal_anchor_weight: 0.0
+    phase2_terminal_anchor_weight: 0.02
+    phase3_terminal_anchor_weight: 0.05
+    phase1_progress_weight: 0.5
+    phase2_progress_weight: 0.5
+    phase3_progress_weight: 0.5
+    phase3_tail_last_k: 2
+    phase3_tail_weight: 2.0
+    min_delta_scale: 0.05
+    max_delta_scale: 0.3
+    bce_boost_if_conservative: 0.8
+    uplift_gate_phase2: 0.002
+    uplift_gate_phase3: 0.005
+    equal_acc_tolerance: 0.0015
+    consecutive_epochs: 3
+    intermediate_bce_on_weight: 0.1
+    intermediate_bce_off_weight: 0.0
+    tail_drop_tolerance: 0.001
+
+validation:
+  max_batches: 8         # 验证时最多跑 N 个 batch；0=全量
+  point_curve:
+    enabled: true
+    max_batches: 4       # 每个 epoch 统计 point0..pointN 的 batch 数；0=沿用 max_batches
+    log_rollout_curve: true         # 仅保留 train/val 自回归推理曲线
+  train_probe:
+    enabled: false        # 是否在训练集上做同口径探针评估
+    max_batches: 0        # 0=沿用 validation.max_batches
+    curve_max_batches: 0  # 0=沿用 train_probe.max_batches/point_curve.max_batches
+
+slerp:
+  n_steps: 10            # SLERP 轨迹插值点数（teacher forcing 总步数）
+  time_min: 0            # timestep 下界（推理后期）
+  time_max: 1000         # timestep 上界（推理前期）
 
 losses:
-  l1:  { weight: 1.0 }
-  bce: { weight: 1.0 }
+  normalize_step_weights: false # per_step_update=true 时建议关闭归一化，避免每步梯度过小
+  image_l1: { weight: 0.0 }     # image/hybrid 主监督：decode(z_pred, ref=fake) -> wm_images
+  latent_aux: { weight: 0.0 }   # hybrid 模式下关闭每步 latent 辅助监督
+  l1:  { weight: 1.0 }          # 兼容旧配置（latent 模式主监督）
+  bce:
+    weight: 1.0                 # 全局 BCE 系数（阶段权重会再乘）
+    intermediate_weight: 0.0    # 默认关闭中间步 BCE（动态控制器可按条件打开到 0.1）
+    final_weight: 1.0           # 最后一步强 BCE
+  final_step_l1_weight: 0.0
+  final_step_bce_weight: 0.0     # 兼容项；建议与 bce.final_weight 配合使用
+  direction: { weight: 0.0 }            # 关闭 latent direction 监督
+  progress:  { weight: 0.2, margin: 0 } # image-domain progress（弱约束，避免主导 per-step 更新）
+  step_size: { weight: 0.0 }            # 步长约束：约束 |z_pred-z_k| 不超过目标步长
+  terminal_anchor: { weight: 0.0 }      # phase1 默认关闭，后续由动态控制器逐步引入
 
 efficiency:
   use_amp: true
-  cache_slerp: true              # epoch 开始前预计算轨迹
+  attack_num_workers: 0
+  cache_slerp: false     # 暂不启用预计算缓存（未来优化项）
 
-wm_model: fin
+wm_model: lampmark
+
 attacks:
-  online:  [stargan]
-  offline: []
+  online:  [stargan2]     # 在线攻击（较温和、无需属性标签）
+  offline: []            # 离线攻击（扩散类，暂不启用）
+
+attack_options:
+  # SimSwap 不依赖 CelebA 属性标签；相比 StarGAN v1 在当前数据集更可控
+  # self 模式使用 wm 图作为 source（模型内部仍会做 batch-roll），通常比激进换脸更平稳
+  simswap_source_mode: self
+  enforce_nontrivial_swap: true
+  nontrivial_swap_eps: 1.0e-4
+
+  stargan2_blend_alpha: 1
+  stargan2_ckpt: "/mnt/personal_workspace/chenkeyu/ReMark/Attack-StarGAN/modelckpt/200000-G.ckpt"
+  stargan2_image_size: 256
+  stargan2_selected_attrs: [Black_Hair, Blond_Hair, Brown_Hair, Male, Young]
+  stargan2_hair_exclusive: false
 
 data:
-  train_csv: data_manifests/celeba_hq_128_train.csv
-  val_csv:   data_manifests/celeba_hq_128_val.csv
+  
+  # train_csv: data_manifests/celeba_hq_128_train_10k.csv
+  # val_csv:   data_manifests/celeba_hq_128_val.csv
+  train_csv: data_manifests/celeba_nonhq_train_10k.csv
+  val_csv: data_manifests/celeba_nonhq_val_5k.csv
   image_size: 128
 
 paths:
-  stage1_checkpoint: checkpoints/stage1/best.pth   # 必须与 Stage1 版本绑定
-  checkpoint_dir: checkpoints/stage2
-  log_dir:        logging
-  sample_dir:     samples/stage2
+  # 必须指向 Stage 1 的 best.pth，且与当前 Stage 1 版本一致
+  # 同目录下如有同名 .config.yaml，会自动加载模型配置
+  stage1_checkpoint: runs/stage1_20260311_121605/checkpoints/vae/best.pth
+  runs_dir: runs
+
+preflight_eval:
+  enabled: true
+  max_batches: 8         # 训练前 baseline：不经过 U-Net，仅 VAE 重采样
+
+progress:
+  enabled: true
+  log_interval_steps: 20

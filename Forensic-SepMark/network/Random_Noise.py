@@ -29,10 +29,21 @@ class Random_Noise(nn.Module):
         noised_image_C = torch.zeros_like(forward_image)
         noised_image_R = torch.zeros_like(forward_image)
         noised_image_F = torch.zeros_like(forward_image)
+        robust_layers = self.noise[0:self.len_layers_R]
+        deepfake_layers = self.noise[self.len_layers_R:self.len_layers_R + self.len_layers_F]
+        single_layer_mode = len(self.noise) == 1
         for index in range(forward_image.shape[0]):
-            random_noise_layer_C = np.random.choice(self.noise, 1)[0]
-            random_noise_layer_R = np.random.choice(self.noise[0:self.len_layers_R], 1)[0]
-            random_noise_layer_F = np.random.choice(self.noise[self.len_layers_R:self.len_layers_R + self.len_layers_F], 1)[0]
+            if single_layer_mode:
+                random_noise_layer_C = self.noise[0]
+                random_noise_layer_R = self.noise[0]
+                random_noise_layer_F = self.noise[0]
+            else:
+                random_noise_layer_C = np.random.choice(self.noise, 1)[0]
+                random_noise_layer_R = np.random.choice(robust_layers, 1)[0]
+                if self.len_layers_F > 0:
+                    random_noise_layer_F = np.random.choice(deepfake_layers, 1)[0]
+                else:
+                    random_noise_layer_F = random_noise_layer_R
             noised_image_C[index] = random_noise_layer_C([forward_image[index].clone().unsqueeze(0), forward_cover_image[index].clone().unsqueeze(0), forward_mask[index].clone().unsqueeze(0)])
             noised_image_R[index] = random_noise_layer_R([forward_image[index].clone().unsqueeze(0), forward_cover_image[index].clone().unsqueeze(0), forward_mask[index].clone().unsqueeze(0)])
             noised_image_F[index] = random_noise_layer_F([forward_image[index].clone().unsqueeze(0), forward_cover_image[index].clone().unsqueeze(0), forward_mask[index].clone().unsqueeze(0)])

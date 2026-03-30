@@ -29,6 +29,7 @@ from data.dataset import ReMark_Dataset
 from network.vae import build_vae
 from wm_adapters.registry import build_wm_adapter
 from attacks.registry import build_attack, ATTACK_REGISTRY
+from utils.message_bits import deterministic_messages_from_paths
 
 # Ensure adapter/attack modules register themselves.
 import wm_adapters  # noqa: F401
@@ -82,8 +83,31 @@ def build_loader(cfg, split: str, batch_size: int, num_workers: int):
     )
 
 
+def _build_messages_for_batch(cfg, wm_adapter, batch, images, message_len, device):
+    bs = images.shape[0]
+    training_cfg = getattr(cfg, "training", None)
+    deterministic_messages = bool(getattr(training_cfg, "deterministic_messages", False))
+    message_seed_salt = str(getattr(training_cfg, "message_seed_salt", "remark_v1"))
+
+    if hasattr(wm_adapter, "build_messages"):
+        m = wm_adapter.build_messages(batch_size=bs, device=device, batch=batch)
+        if m is not None:
+            return m.float().to(device)
+
+    if deterministic_messages and ("img_path" in batch):
+        paths = batch["img_path"]
+        if isinstance(paths, (list, tuple)) and len(paths) == bs:
+            return deterministic_messages_from_paths(
+                paths=paths,
+                message_len=message_len,
+                device=device,
+                salt=message_seed_salt,
+            )
+    return torch.randint(0, 2, (bs, message_len), device=device).float()
+
+
 @torch.no_grad()
-def evaluate(cfg, run_dir, ckpt_path, split, max_batches, batch_size, num_workers, seed):
+def evaluate(cfg, run_dir, ckpt_path, split, max_batches, batch_size, num_workers, seed, per_image=False):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -99,7 +123,6 @@ def evaluate(cfg, run_dir, ckpt_path, split, max_batches, batch_size, num_worker
 
     wm_adapter = build_wm_adapter(cfg.wm_model, cfg)
     message_len = int(wm_adapter.message_length)
-
     attack_names = list(getattr(cfg.attacks, "online", []))
     if not attack_names:
         raise RuntimeError("No online attacks configured.")
@@ -113,6 +136,7 @@ def evaluate(cfg, run_dir, ckpt_path, split, max_batches, batch_size, num_worker
     loader = build_loader(cfg, split=split, batch_size=batch_size, num_workers=num_workers)
 
     rows = []
+    per_image_rows = []
     for attack_name, attack in attack_objects.items():
         correct_raw = 0.0
         total_raw = 0.0
@@ -130,15 +154,25 @@ def evaluate(cfg, run_dir, ckpt_path, split, max_batches, batch_size, num_worker
         logvar_mean_sum = 0.0
         latent_count = 0.0
 
+        sample_index = 0
         for bidx, batch in enumerate(loader):
             if max_batches > 0 and bidx >= max_batches:
                 break
 
             images = batch["image"].to(device, non_blocking=True)
             bs = images.shape[0]
-            messages = torch.randint(0, 2, (bs, message_len), device=device).float()
-
-            wm_images = wm_adapter.encode(images, messages)
+            messages = _build_messages_for_batch(
+                cfg=cfg,
+                wm_adapter=wm_adapter,
+                batch=batch,
+                images=images,
+                message_len=message_len,
+                device=device,
+            )
+            if hasattr(wm_adapter, "encode_with_batch"):
+                wm_images = wm_adapter.encode_with_batch(images, messages, batch=batch)
+            else:
+                wm_images = wm_adapter.encode(images, messages)
             if hasattr(attack, "attack_with_cover"):
                 try:
                     attacked = attack.attack_with_cover(wm_images, images, batch=batch)
@@ -150,18 +184,20 @@ def evaluate(cfg, run_dir, ckpt_path, split, max_batches, batch_size, num_worker
             logits_raw = wm_adapter.decode(attacked)
             pred_raw = (torch.sigmoid(logits_raw) > 0.5).float()
             bit_eq_raw = (pred_raw == messages).float()
+            sample_acc_raw = bit_eq_raw.mean(dim=1)
             correct_raw += float(bit_eq_raw.sum().item())
             total_raw += float(messages.numel())
-            sample_acc_sum_raw += float(bit_eq_raw.mean(dim=1).sum().item())
+            sample_acc_sum_raw += float(sample_acc_raw.sum().item())
             sample_count_raw += float(bs)
 
             recon, mu, logvar = vae(attacked)
             logits_recon = wm_adapter.decode(recon)
             pred_recon = (torch.sigmoid(logits_recon) > 0.5).float()
             bit_eq_recon = (pred_recon == messages).float()
+            sample_acc_recon = bit_eq_recon.mean(dim=1)
             correct_recon += float(bit_eq_recon.sum().item())
             total_recon += float(messages.numel())
-            sample_acc_sum_recon += float(bit_eq_recon.mean(dim=1).sum().item())
+            sample_acc_sum_recon += float(sample_acc_recon.sum().item())
             sample_count_recon += float(bs)
             recon_l1_sum += float((recon - attacked).abs().mean().item()) * float(bs)
             recon_count += float(bs)
@@ -172,6 +208,28 @@ def evaluate(cfg, run_dir, ckpt_path, split, max_batches, batch_size, num_worker
             mu_abs_sum += float(mu.abs().mean().item()) * float(bs)
             logvar_mean_sum += float(logvar.mean().item()) * float(bs)
             latent_count += float(bs)
+
+            if per_image:
+                img_paths = batch.get("img_path", [f"sample_{bidx}_{i}" for i in range(bs)])
+                if not isinstance(img_paths, (list, tuple)):
+                    img_paths = [str(img_paths)] * bs
+                for i in range(bs):
+                    row = {
+                        "attack": attack_name,
+                        "index": sample_index,
+                        "img_path": str(img_paths[i]),
+                        "raw_acc": float(sample_acc_raw[i].item()),
+                        "recon_acc": float(sample_acc_recon[i].item()),
+                        "ckpt": os.path.basename(ckpt_path),
+                        "split": split,
+                    }
+                    per_image_rows.append(row)
+                    print(
+                        f"[{attack_name}] idx={sample_index:03d} "
+                        f"raw_acc={row['raw_acc']:.6f} recon_acc={row['recon_acc']:.6f} "
+                        f"img={row['img_path']}"
+                    )
+                    sample_index += 1
 
         bit_acc_raw = correct_raw / max(total_raw, 1.0)
         ber_raw = 1.0 - bit_acc_raw
@@ -250,6 +308,25 @@ def evaluate(cfg, run_dir, ckpt_path, split, max_batches, batch_size, num_worker
         writer.writerows(rows)
     print(f"Saved: {out_csv}")
 
+    if per_image and per_image_rows:
+        out_csv_detail = os.path.join(run_dir, f"attacked_recon_eval_{split}_per_image.csv")
+        with open(out_csv_detail, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(
+                f,
+                fieldnames=[
+                    "attack",
+                    "index",
+                    "img_path",
+                    "raw_acc",
+                    "recon_acc",
+                    "ckpt",
+                    "split",
+                ],
+            )
+            writer.writeheader()
+            writer.writerows(per_image_rows)
+        print(f"Saved: {out_csv_detail}")
+
 
 def parse_args():
     p = argparse.ArgumentParser()
@@ -260,6 +337,7 @@ def parse_args():
     p.add_argument("--batch-size", type=int, default=0, help="0 means use config batch size")
     p.add_argument("--num-workers", type=int, default=0)
     p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--per-image", action="store_true", help="Save and print per-image acc rows")
     return p.parse_args()
 
 
@@ -278,6 +356,7 @@ def main():
         batch_size=batch_size,
         num_workers=args.num_workers,
         seed=args.seed,
+        per_image=args.per_image,
     )
 
 

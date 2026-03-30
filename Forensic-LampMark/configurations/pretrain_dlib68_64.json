@@ -1,0 +1,30 @@
+{
+  "img_size": 128,
+  "sep_model": false,
+  "encoder_channels": 64,
+  "encoder_blocks": 3,
+  "decoder_channels": 64,
+  "decoder_blocks": 1,
+  "discriminator_channels": 64,
+  "discriminator_blocks": 3,
+  "watermark_length": 64,
+  "epochs": 300,
+  "batch_size": 256,
+  "lr": 2e-2,
+  "manipulation_mode": "common",
+  "manipulation_layers": [
+    "Combined([Identity(),Jpeg(50),JpegMask(50)])"
+  ],
+  "encoder_weight": 1,
+  "decoder_weight": 12,
+  "discriminator_weight": 0.01,
+  "img_path": "/mnt/personal_workspace/chenkeyu/ReMark/Dataset-CelebA_HQ",
+  "wm_path": "/mnt/personal_workspace/chenkeyu/ReMark/Forensic-LampMark/watermark_data_dlib68/celeba_hq",
+  "manifest_path": "/mnt/personal_workspace/chenkeyu/ReMark/Forensic-LampMark/data_manifests/dlib68_landmark_128_{split}.csv",
+  "weight_path": "/mnt/personal_workspace/chenkeyu/ReMark/Forensic-LampMark/weights/128_64",
+  "do_validation": false,
+  "save_img_nums": 2,
+  "is_continue": false,
+  "current_epoch": 0
+}
+

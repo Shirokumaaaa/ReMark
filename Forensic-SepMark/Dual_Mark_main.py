@@ -1,6 +1,7 @@
 import yaml
 from easydict import EasyDict
 import os
+import sys
 import time
 from shutil import copyfile
 import random
@@ -11,6 +12,12 @@ from torch.utils.data import Subset
 from torch.utils.tensorboard import SummaryWriter
 from network.Dual_Mark import *
 from utils import *
+
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
+from common.landmark_bits import bits_from_image_paths
 
 
 def seed_torch(seed=42):
@@ -32,7 +39,8 @@ def main():
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    with open('cfg/train_DualMark.yaml', 'r') as f:
+    cfg_path = os.environ.get("SEPMARK_CFG_PATH", "cfg/train_DualMark.yaml").strip()
+    with open(cfg_path, 'r') as f:
         args = EasyDict(yaml.load(f, Loader=yaml.SafeLoader))
 
     project_name = args.project_name
@@ -43,6 +51,11 @@ def main():
     image_size = args.image_size
     message_length = args.message_length
     message_range = args.message_range
+    message_mode = str(os.environ.get("SEPMARK_MESSAGE_MODE", "random")).strip().lower()
+    landmark_predictor_path = str(os.environ.get("SEPMARK_LANDMARK_PREDICTOR", "")).strip()
+    landmark_cache_dir = str(os.environ.get("SEPMARK_LANDMARK_CACHE_DIR", "")).strip()
+    landmark_canonical_bits = int(os.environ.get("SEPMARK_LANDMARK_CANONICAL_BITS", "128"))
+    landmark_bits_per_value = int(os.environ.get("SEPMARK_LANDMARK_BITS_PER_VALUE", "4"))
     attention_encoder = args.attention_encoder
     attention_decoder = args.attention_decoder
     weight = args.weight
@@ -61,7 +74,7 @@ def main():
     if not os.path.exists(result_folder): os.mkdir(result_folder)
     if not os.path.exists(result_folder + "images/"): os.mkdir(result_folder + "images/")
     if not os.path.exists(result_folder + "models/"): os.mkdir(result_folder + "models/")
-    copyfile("cfg/train_DualMark.yaml", result_folder + "train_DualMark.yaml")
+    copyfile(cfg_path, result_folder + os.path.basename(cfg_path))
     writer = SummaryWriter('runs/'+ project_name + time.strftime("%_Y_%m_%d__%H_%M_%S", time.localtime()))
 
     network = Network(message_length, noise_layers_R, noise_layers_F, device, batch_size, lr, beta1, attention_encoder, attention_decoder, weight)
@@ -96,6 +109,11 @@ def main():
         val_dataset = Subset(val_dataset, val_indices.tolist())
 
     print(f"[Data] train={len(train_dataset)} val={len(val_dataset)} fraction={data_fraction} batch={batch_size}")
+    print(
+        f"[Message] mode={message_mode} predictor={landmark_predictor_path or 'default'} "
+        f"cache_dir={landmark_cache_dir or '(none)'} canonical_bits={landmark_canonical_bits} "
+        f"bits_per_value={landmark_bits_per_value}"
+    )
 
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0, pin_memory=True)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=0, pin_memory=True)
@@ -112,6 +130,22 @@ def main():
             "g_loss_on_encoder_LPIPS", "g_loss_on_decoder_C", "g_loss_on_decoder_R",
             "g_loss_on_decoder_F", "d_loss"
         ])
+
+    def build_messages(image_paths, batch_count):
+        if message_mode == "landmark_bits":
+            bits = bits_from_image_paths(
+                image_paths=image_paths,
+                num_bits=message_length,
+                device=device,
+                predictor_path=landmark_predictor_path or None,
+                cache_dir=landmark_cache_dir,
+                canonical_bits=landmark_canonical_bits,
+                bits_per_value=landmark_bits_per_value,
+            )
+            return (bits * 2.0 - 1.0) * float(message_range)
+        return torch.Tensor(
+            np.random.choice([-message_range, message_range], (batch_count, message_length))
+        ).to(device)
 
     for epoch in range(1, epoch_number + 1):
 
@@ -138,9 +172,19 @@ def main():
         '''
         train_total = len(train_dataloader) if max_train_steps <= 0 else min(len(train_dataloader), max_train_steps)
         train_bar = tqdm(enumerate(train_dataloader, 1), total=train_total, desc=f"Train E{epoch}", leave=False)
-        for step, (image, mask) in train_bar:
+        for step, batch in train_bar:
+            if len(batch) == 3:
+                image, mask, image_paths = batch
+            else:
+                image, mask = batch
+                image_paths = None
             image = image.to(device)
-            message = torch.Tensor(np.random.choice([-message_range, message_range], (image.shape[0], message_length))).to(device)
+            if message_mode == "landmark_bits":
+                if image_paths is None:
+                    raise RuntimeError("landmark_bits mode requires image paths in the dataset batch.")
+                message = build_messages(image_paths=image_paths, batch_count=image.shape[0])
+            else:
+                message = build_messages(image_paths=None, batch_count=image.shape[0])
 
             result = network.train(image, message, mask)
             train_bar.set_postfix(
@@ -212,9 +256,19 @@ def main():
 
         val_total = len(val_dataloader) if max_val_steps <= 0 else min(len(val_dataloader), max_val_steps)
         val_bar = tqdm(enumerate(val_dataloader, 1), total=val_total, desc=f"Val E{epoch}", leave=False)
-        for step, (image, mask) in val_bar:
+        for step, batch in val_bar:
+            if len(batch) == 3:
+                image, mask, image_paths = batch
+            else:
+                image, mask = batch
+                image_paths = None
             image = image.to(device)
-            message = torch.Tensor(np.random.choice([-message_range, message_range], (image.shape[0], message_length))).to(device)
+            if message_mode == "landmark_bits":
+                if image_paths is None:
+                    raise RuntimeError("landmark_bits mode requires image paths in the dataset batch.")
+                message = build_messages(image_paths=image_paths, batch_count=image.shape[0])
+            else:
+                message = build_messages(image_paths=None, batch_count=image.shape[0])
 
             result, (images, encoded_images, noised_images) = network.validation(image, message, mask)
             val_bar.set_postfix(

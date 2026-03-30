@@ -7,9 +7,9 @@ class BaseAttack(ABC):
     攻击模型统一基类。
 
     所有攻击 adapter 继承此类，实现三个方法：
-      - preprocess:  canonical [-1,1] BCHW → 攻击模型期望格式
+      - preprocess:  canonical [-1,1] BCHW -> 攻击模型期望格式
       - generate:    模型推理（子类实现）
-      - postprocess: 攻击模型输出 → canonical [-1,1] BCHW
+      - postprocess: 攻击模型输出 -> canonical [-1,1] BCHW
 
     外部调用只需：fake = attack(images)
     __call__ 由基类统一调度，保证输出格式一致，子类无法绕过 postprocess。
@@ -67,5 +67,5 @@ class BaseAttack(ABC):
 
     @staticmethod
     def to_display(tensor: torch.Tensor) -> torch.Tensor:
-        """canonical [-1,1] → [0,1]，用于 sample 可视化，统一调用"""
+        """canonical [-1,1] -> [0,1]，用于 sample 可视化，统一调用"""
         return (tensor.clamp(-1, 1) + 1) / 2

@@ -1,0 +1,31 @@
+{
+  "img_size": 128,
+  "sep_model": false,
+  "encoder_channels": 64,
+  "encoder_blocks": 3,
+  "decoder_channels": 64,
+  "decoder_blocks": 1,
+  "discriminator_channels": 64,
+  "discriminator_blocks": 3,
+  "watermark_length": 64,
+  "epochs": 20,
+  "batch_size": 64,
+  "lr": 2e-2,
+  "manipulation_mode": "common",
+  "manipulation_layers": [
+    "Identity()"
+  ],
+  "encoder_weight": 1,
+  "decoder_weight": 12,
+  "discriminator_weight": 0.01,
+  "img_path": "/mnt/personal_workspace/chenkeyu/ReMark/Dataset-CelebA_HQ",
+  "wm_path": "/mnt/personal_workspace/chenkeyu/ReMark/Forensic-LampMark/watermark_data_dlib68_10k_clean_20260324/celeba_hq",
+  "manifest_path": "/mnt/personal_workspace/chenkeyu/ReMark/Forensic-LampMark/data_manifests/dlib68_landmark_128_{split}.csv",
+  "weight_path": "/mnt/personal_workspace/chenkeyu/ReMark/Forensic-LampMark/weights/128_64",
+  "pretrain_model_path": "/mnt/personal_workspace/chenkeyu/ReMark/Forensic-LampMark/weights/128_64/wm-img/model_epoch_299.pth",
+  "pretrain_discriminator_path": "/mnt/personal_workspace/chenkeyu/ReMark/Forensic-LampMark/weights/128_64/discriminator/epoch_299.pth",
+  "do_validation": true,
+  "save_img_nums": 2,
+  "is_continue": false,
+  "current_epoch": 0
+}

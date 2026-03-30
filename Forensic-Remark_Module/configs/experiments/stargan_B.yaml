@@ -1,5 +1,0 @@
-attack_options:
-  stargan_mode: latent
-  stargan_source_mode: self
-  stargan_random_domain: true
-  stargan_blend_alpha: 1.0

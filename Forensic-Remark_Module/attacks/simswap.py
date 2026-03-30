@@ -2,9 +2,11 @@ import os
 import sys
 import importlib
 import importlib.util
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from PIL import Image
 
 from .base import BaseAttack
 from .registry import register_attack
@@ -91,6 +93,17 @@ class SimSwapAttack(BaseAttack):
         opts = getattr(cfg, 'attack_options', None)
         self._swap_check_enabled = bool(getattr(opts, 'enforce_nontrivial_swap', True))
         self._swap_check_eps = float(getattr(opts, 'nontrivial_swap_eps', 1e-4))
+        self.blend_alpha = float(getattr(opts, 'simswap_blend_alpha', 1.0))
+        self._source_mode = str(getattr(opts, 'simswap_source_mode', 'cover_roll')).lower()
+        self._fixed_source_image = str(getattr(opts, 'simswap_fixed_source_image', '')).strip()
+        self._fixed_source_pre_01 = None
+        if self._source_mode == 'fixed_file':
+            if not self._fixed_source_image:
+                raise ValueError(
+                    "attack_options.simswap_source_mode='fixed_file' 但未提供 "
+                    "attack_options.simswap_fixed_source_image"
+                )
+            self._fixed_source_pre_01 = self._load_fixed_source_pre_tensor(self._fixed_source_image)
         self._load_model()
 
     def _load_model(self):
@@ -141,9 +154,10 @@ class SimSwapAttack(BaseAttack):
         训练路径优先走 attack_with_cover()。
         """
         device = preprocessed.device
+        source_pre = self._build_source_pre(preprocessed, preprocessed)
         self._model.to(device)
         with torch.no_grad():
-            fake = self._model([preprocessed, preprocessed, device])
+            fake = self._model([preprocessed, source_pre, device])
         return fake
 
     def postprocess(self, output: torch.Tensor, original_size: tuple) -> torch.Tensor:
@@ -153,24 +167,68 @@ class SimSwapAttack(BaseAttack):
 
     def attack_with_cover(self, wm_images: torch.Tensor, cover_images: torch.Tensor) -> torch.Tensor:
         """
-        与 LampMark 调用方式对齐：
-          source <- roll(clean cover)
-          target <- wm image
-        由 SimSwapModel 内部 forward 实现。
+        与 LampMark 调用方式对齐，target 固定为 wm image；
+        source 由 attack_options.simswap_source_mode 控制：
+          - cover_roll（默认）：source <- clean cover（模型内部 roll）
+          - self：source <- wm image（模型内部 roll）
+          - fixed_file：source <- 固定单图（模型内部 roll，对 batch 无影响）
         """
         original_size = (wm_images.shape[-2], wm_images.shape[-1])
         wm_pre = self.preprocess(wm_images)
         cover_pre = self.preprocess(cover_images)
+        source_pre = self._build_source_pre(wm_pre, cover_pre)
 
         device = wm_pre.device
         self._model.to(device)
         with torch.no_grad():
-            fake = self._model([wm_pre, cover_pre, device])
+            fake = self._model([wm_pre, source_pre, device])
 
         out = self.postprocess(fake, original_size)
+        a = min(max(float(self.blend_alpha), 0.0), 1.0)
+        if a < 1.0:
+            out = out * a + wm_images * (1.0 - a)
         self._validate_output(out, original_size)
         self._assert_nontrivial_swap(wm_images, out)
         return out
+
+    def _build_source_pre(self, wm_pre: torch.Tensor, cover_pre: torch.Tensor) -> torch.Tensor:
+        if self._source_mode in ('cover_roll', 'cover'):
+            return cover_pre
+        if self._source_mode in ('self', 'wm', 'wm_self'):
+            return wm_pre
+        if self._source_mode == 'fixed_file':
+            if self._fixed_source_pre_01 is None:
+                raise RuntimeError("fixed source tensor is not initialized")
+            source = self._fixed_source_pre_01.to(device=wm_pre.device, dtype=wm_pre.dtype)
+            return source.expand(wm_pre.shape[0], -1, -1, -1)
+        raise ValueError(
+            f"Unsupported attack_options.simswap_source_mode='{self._source_mode}'. "
+            "Supported: cover_roll | self | fixed_file"
+        )
+
+    def _resolve_fixed_source_path(self, path: str) -> str:
+        candidates = []
+        if os.path.isabs(path):
+            candidates.append(path)
+        module_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        candidates.append(os.path.join(module_root, path))
+        candidates.append(os.path.join(_PROJECT_ROOT, path))
+        for cand in candidates:
+            if os.path.exists(cand):
+                return os.path.abspath(cand)
+        raise FileNotFoundError(
+            f"SimSwap fixed source image not found: '{path}'. "
+            f"Tried: {', '.join(candidates)}"
+        )
+
+    def _load_fixed_source_pre_tensor(self, path: str) -> torch.Tensor:
+        img_size = int(getattr(getattr(self.cfg, 'data', None), 'image_size', 128))
+        resolved = self._resolve_fixed_source_path(path)
+        with Image.open(resolved) as img:
+            img = img.convert('RGB').resize((img_size, img_size), Image.BILINEAR)
+            arr = np.asarray(img, dtype=np.float32) / 255.0
+        tensor = torch.from_numpy(arr).permute(2, 0, 1).contiguous().unsqueeze(0)
+        return tensor
 
     def _assert_nontrivial_swap(self, original: torch.Tensor, swapped: torch.Tensor):
         """防止 silent fallback：输出若与输入几乎完全相同，则判为非真实换脸。"""
