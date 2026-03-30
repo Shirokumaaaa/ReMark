@@ -64,3 +64,50 @@ Forensic-TrustMark/python/output*/
 # Temporary download/cache files
 Dataset-FF++/**/videos/tmp*
 Dataset-FFHQ/*.tmp.*
+
+# Backup of embedded git metadata when flattening nested repos
+**/.git.bak/
+
+# ===== local tools =====
+.codex/
+
+# ===== datasets / large local assets =====
+Dataset-*/
+landmark_bit_cache/
+
+# ===== generated outputs =====
+**/output/
+**/outputs/
+**/runs/
+**/checkpoints/
+**/logging/
+*.log
+
+# ===== model weights / archives =====
+*.ckpt
+*.pth
+*.pt
+*.bin
+*.safetensors
+*.onnx
+*.h5
+*.npz
+*.npy
+*.tar
+*.gz
+*.bz2
+*.xz
+*.7z
+*.zip
+
+# ===== caches / temp =====
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+*.pyc
+*.pyo
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
