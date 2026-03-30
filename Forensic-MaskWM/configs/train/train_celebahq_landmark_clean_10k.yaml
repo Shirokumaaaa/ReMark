@@ -1,0 +1,35 @@
+device: cuda:0
+num_training_steps: 12500
+num_save_steps: 2500
+
+dataset_path: /mnt/personal_workspace/chenkeyu/ReMark/Dataset-CelebA_HQ_10k_landmark_clean_20260324
+dataset_format: image_folder
+dataset_train_subdir: train
+
+message_mode: landmark_bits
+landmark_predictor_path: /mnt/personal_workspace/chenkeyu/ReMark/Attack-DiffSwap/checkpoints/shape_predictor_68_face_landmarks.dat
+landmark_bits_cache_dir: /mnt/personal_workspace/chenkeyu/ReMark/landmark_bit_cache/celeba_hq_native_10k_clean_20260324_sharded
+landmark_canonical_bits: 128
+landmark_bits_per_value: 4
+
+batch_size: 16
+lr: 0.0001
+encoder_weight: 1
+decoder_weight: 20
+decoder_weight_end: 0.2
+num_decoder_weight_decay_ratio: 0.05
+mask_weight: 0.5
+ED_path: /mnt/personal_workspace/chenkeyu/ReMark/Forensic-MaskWM/checkpoints/D_128bits.pth
+use_scheduler: cosine
+start_jnd_ratio: 0.05
+noise_layers: Identity()
+ft_noise_layers: ''
+full_mask_ft: false
+
+masks:
+  kind: mixed
+  invert_proba: 0.5
+  irregular_proba: 0.3333
+  box_proba: 0.3333
+  full_proba: 0.3334
+  segm_proba: 0.0
