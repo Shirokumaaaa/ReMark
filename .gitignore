@@ -99,6 +99,8 @@ landmark_bit_cache/
 *.xz
 *.7z
 *.zip
+*.msgpack
+*.mat
 
 # ===== caches / temp =====
 __pycache__/
@@ -111,3 +113,5 @@ __pycache__/
 *.swp
 .DS_Store
 Thumbs.db
+Attack-REFace/Other_dependencies/clip-vit-large-patch14/
+Attack-REFace/Other_dependencies/clip-vit-large-patch14/
