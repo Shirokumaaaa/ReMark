@@ -234,6 +234,11 @@ class ReMark_VAE(nn.Module):
 
 def build_vae(cfg) -> ReMark_VAE:
     """从 config 构建 VAE，供训练脚本调用"""
+    model_type = str(getattr(cfg.model, 'type', 'vae')).lower()
+    if model_type not in ('vae', 'remark_vae'):
+        from network.restoration_baselines import build_restoration_baseline
+        return build_restoration_baseline(cfg)
+
     import math
     ds = getattr(cfg.model, 'downsample_factor', 16)
     n_downsample = int(math.log2(ds))

@@ -1,0 +1,5 @@
+model:
+  type: fape_ir
+  base_channels: 48
+  experts: 3
+  residual_scale: 0.40

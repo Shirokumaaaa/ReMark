@@ -1,0 +1,5 @@
+model:
+  type: bdg_36m
+  base_channels: 64
+  depth: 4
+  residual_scale: 0.45

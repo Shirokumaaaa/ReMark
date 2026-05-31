@@ -1,0 +1,51 @@
+training:
+  epochs: 1
+  batch_size: 1
+  lr: 1.0e-4
+  save_freq: 1
+  val_freq: 1
+  best_select: val_clean_acc
+
+validation:
+  max_batches: 1
+  attacks: []
+
+progress:
+  enabled: false
+
+losses:
+  l1:    { weight: 0.5 }
+  lpips: { weight: 0.0, enabled: false }
+  bce:   { weight: 1.0 }
+  kl:    { weight: 0.0, enabled: true }
+
+efficiency:
+  cache_wm_images: false
+  use_amp: false
+  wm_loss_freq: 1
+  attack_num_workers: 0
+
+wm_model: lampmark
+
+wm_adapter_lampmark:
+  image_size: 128
+  message_length: 64
+  encoder_ckpt: /mnt/personal_workspace/chenkeyu/ReMark/Forensic-LampMark/weights/128_64/deepfake/encoder_epoch_30.pth
+  decoder_ckpt: /mnt/personal_workspace/chenkeyu/ReMark/Forensic-LampMark/weights/128_64/deepfake/decoder_epoch_30.pth
+  decoder_logits_mode: linear_centered
+  decoder_logits_scale: 10.0
+
+attacks:
+  online: []
+  offline: []
+
+data:
+  train_csv: data_manifests/quick_celeba_hq_128_train.csv
+  val_csv: data_manifests/quick_celeba_hq_128_val.csv
+  image_size: 128
+
+paths:
+  runs_dir: runs/restoration_lmsg_smoke
+
+preflight_eval:
+  enabled: false

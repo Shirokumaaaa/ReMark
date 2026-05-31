@@ -30,9 +30,15 @@ def load_config(path: str, override: str = None) -> SimpleNamespace:
         cfg = yaml.safe_load(f)
 
     if override is not None:
-        with open(os.path.join(root, override)) as f:
-            ov = yaml.safe_load(f)
-        cfg = _deep_merge(cfg, ov)
+        override_paths = (
+            [x.strip() for x in str(override).split(',') if x.strip()]
+            if not isinstance(override, (list, tuple))
+            else list(override)
+        )
+        for override_path in override_paths:
+            with open(os.path.join(root, override_path)) as f:
+                ov = yaml.safe_load(f)
+            cfg = _deep_merge(cfg, ov)
 
     # 将所有相对路径解析为基于模块根目录的绝对路径
     cfg = _resolve_paths(cfg, root)

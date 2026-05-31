@@ -1,0 +1,5 @@
+model:
+  type: rar
+  base_channels: 48
+  iterations: 3
+  residual_scale: 0.25

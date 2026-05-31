@@ -1,0 +1,5 @@
+model:
+  type: defusion
+  base_channels: 64
+  diffusion_steps: 4
+  residual_scale: 0.35

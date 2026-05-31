@@ -1,0 +1,5 @@
+model:
+  type: bdg_sd2
+  base_channels: 64
+  latent_channels: 8
+  residual_scale: 0.45
